@@ -65,6 +65,20 @@ country=
         }
         policy_flags={ "diplo_stance_isolationist" "unrestricted_wars" }
         owned_leaders={ 10 11 12 }
+        owned_fleets={ { fleet=100 } { fleet=101 } }
+        starbase_capacity=5
+        ship_design_collection=
+        {
+            ship_design={ 200 201 }
+            auto_gen_design=no
+        }
+        tech_status=
+        {
+            technology="tech_space_exploration"
+            level=1
+            technology="tech_starbase_2"
+            level=1
+        }
         tradition_categories={ "tradition_prosperity" "tradition_supremacy" }
         traditions={ "tr_prosperity_adopt" "tr_supremacy_adopt" }
         ascension_perks={ "ap_technological_ascendancy" }
@@ -147,6 +161,112 @@ planets=
         num_sapient_pops=10
     }
 }
+galactic_object=
+{
+    77=
+    {
+        name={ key="Test System" }
+        starbases={ 5 }
+    }
+}
+starbase_mgr=
+{
+    starbases=
+    {
+        5=
+        {
+            level="starbase_level_starport"
+            type="sshipyard"
+            modules={ 0=shipyard 1=solar_panel_network }
+            buildings={ 0=crew_quarters }
+            nested_table=
+            {
+                5={ should_not_duplicate=yes }
+            }
+            station=50
+            build_queue=60
+            shipyard_build_queue=61
+            construction_type=starbase_shipyard
+        }
+        6=
+        {
+            level="starbase_level_outpost"
+            station=51
+        }
+    }
+}
+ships=
+{
+    50={ fleet=100 }
+    51={ fleet=999 }
+}
+fleet=
+{
+    100=
+    {
+        name={ key="shipclass_starbase_name" }
+        ship_class=shipclass_starbase
+        military_power=123.5
+    }
+    999=
+    {
+        ship_class=shipclass_starbase
+        military_power=999
+    }
+}
+megastructures=
+{
+    1=
+    {
+        name={ key="Grand Archive" }
+        type="grand_archive_0"
+        coordinate={ x=1 y=2 origin=77 }
+        owner=0
+        planet=3
+        build_queue=4294967295
+        dismantle_progress=0
+    }
+    2=
+    {
+        type="ring_world_ruined"
+        owner=9
+        planet=4294967295
+    }
+}
+ship_design=
+{
+    200=
+    {
+        name={ key="Test Corvette" }
+        auto_gen_design=yes
+        growth_stages=
+        {
+            {
+                ship_size="corvette"
+                section=
+                {
+                    template="CORVETTE_MID_S3"
+                    component={ slot="SMALL_GUN_01" template="SMALL_LASER_1" }
+                    component={ slot="SMALL_UTILITY_1" template="SMALL_SHIELD_1" }
+                }
+                required_component="CORVETTE_FISSION_REACTOR"
+                required_component="HYPER_DRIVE_1"
+            }
+        }
+    }
+    201=
+    {
+        name={ key="Test Constructor" }
+        auto_gen_design=no
+        growth_stages=
+        {
+            {
+                ship_size="constructor"
+                section={ template="BULWARK_BATTLEWRIGHT_SECTION" }
+            }
+        }
+    }
+}
 leaders=
 {
     10=
@@ -219,6 +339,36 @@ leaders=
     assert empire.leaders[1].traits == ["leader_trait_spark_of_genius"]
     assert empire.pop_factions_applicable is False
     assert empire.pop_faction_members == 0
+    assert empire.owned_fleets == [100, 101]
+    assert empire.starbase_capacity == 5
+    assert len(empire.starbases) == 1
+    assert empire.starbases[0].starbase_id == 5
+    assert empire.starbases[0].system_id == 77
+    assert empire.starbases[0].system_name == "Test System"
+    assert empire.starbases[0].level == "starbase_level_starport"
+    assert empire.starbases[0].modules == ["shipyard", "solar_panel_network"]
+    assert empire.starbases[0].buildings == ["crew_quarters"]
+    assert empire.starbases[0].fleet_id == 100
+    assert empire.starbases[0].military_power == 123.5
+    assert len(empire.megastructures) == 1
+    assert empire.megastructures[0].megastructure_type == "grand_archive_0"
+    assert empire.megastructures[0].system_id == 77
+    assert empire.megastructures[0].planet_id == 3
+    assert empire.ship_design_ids == [200, 201]
+    assert len(empire.ship_designs) == 2
+    assert empire.ship_designs[0].name == "Test Corvette"
+    assert empire.ship_designs[0].ship_size == "corvette"
+    assert empire.ship_designs[0].auto_generated is True
+    assert empire.ship_designs[0].section_templates == ["CORVETTE_MID_S3"]
+    assert empire.ship_designs[0].component_templates == ["SMALL_LASER_1", "SMALL_SHIELD_1"]
+    assert empire.ship_designs[0].required_components == [
+        "CORVETTE_FISSION_REACTOR",
+        "HYPER_DRIVE_1",
+    ]
+    assert empire.technologies == {
+        "tech_space_exploration": 1,
+        "tech_starbase_2": 1,
+    }
     assert empire.owned_planets == [3, 197]
     assert len(empire.planets) == 2
     assert empire.planets[0].name == "Capital"

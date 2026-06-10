@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -10,13 +11,24 @@ from .clausewitz import (
     extract_top_level_block,
     find_all_scalars,
     find_scalar,
+    iter_numbered_blocks,
+    parse_indexed_value_block,
     parse_int_list_block,
     parse_quoted_list_block,
     parse_resource_block,
     parse_top_level_assignments,
     sum_nested_resource_blocks,
 )
-from .models import EmpireSummary, LeaderSummary, PlanetSummary, SaveGame, SaveMetadata
+from .models import (
+    EmpireSummary,
+    LeaderSummary,
+    MegastructureSummary,
+    PlanetSummary,
+    SaveGame,
+    SaveMetadata,
+    ShipDesignSummary,
+    StarbaseSummary,
+)
 
 
 META_KEYS = {"version", "name", "date", "player", "ironman"}
@@ -117,8 +129,13 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
     edicts_block = extract_block(country_block, "edicts") or ""
     policy_flags_block = extract_block(country_block, "policy_flags")
     owned_leaders_block = extract_block(country_block, "owned_leaders")
+    owned_fleets_block = extract_block(country_block, "owned_fleets")
+    ship_design_collection_block = extract_block(country_block, "ship_design_collection") or ""
+    ship_design_ids_block = extract_block(ship_design_collection_block, "ship_design")
     owned_leaders = parse_int_list_block(owned_leaders_block or "")
     owned_planets = parse_int_list_block(owned_planets_block or "")
+    owned_fleets = [int(item) for item in find_all_scalars(owned_fleets_block or "", "fleet")]
+    ship_design_ids = parse_int_list_block(ship_design_ids_block or "")
     pop_factions_block = extract_block(country_block, "standard_pop_factions_module")
     is_gestalt = "ethic_gestalt_consciousness" in [
         str(item) for item in find_all_scalars(ethos_block, "ethic")
@@ -153,6 +170,13 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
         ),
         owned_planets=owned_planets,
         planets=_extract_planets(gamestate_text, owned_planets),
+        owned_fleets=owned_fleets,
+        starbase_capacity=_as_optional_int(find_scalar(country_block, "starbase_capacity")),
+        starbases=_extract_starbases(gamestate_text, owned_fleets),
+        megastructures=_extract_megastructures(gamestate_text, country_id),
+        ship_design_ids=ship_design_ids,
+        ship_designs=_extract_ship_designs(gamestate_text, ship_design_ids),
+        technologies=_extract_technologies(country_block),
         monthly_income=monthly_income,
         fleet_size=_as_optional_float(find_scalar(country_block, "fleet_size")),
         used_naval_capacity=_as_optional_float(find_scalar(country_block, "used_naval_capacity")),
@@ -162,6 +186,150 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
         economy_power=_as_optional_float(find_scalar(country_block, "economy_power")),
         victory_rank=_as_optional_int(find_scalar(country_block, "victory_rank")),
     )
+
+
+def _extract_megastructures(
+    gamestate_text: str, country_id: int
+) -> list[MegastructureSummary]:
+    megastructures_block = extract_top_level_block(gamestate_text, "megastructures")
+    if megastructures_block is None:
+        return []
+
+    summaries: list[MegastructureSummary] = []
+    for megastructure_id, megastructure_block in iter_numbered_blocks(megastructures_block):
+        owner = _as_optional_int(find_scalar(megastructure_block, "owner"))
+        if owner != country_id:
+            continue
+        coordinate_block = extract_block(megastructure_block, "coordinate") or ""
+        summaries.append(
+            MegastructureSummary(
+                megastructure_id=megastructure_id,
+                name=_extract_localized_name(megastructure_block),
+                megastructure_type=_as_optional_str(find_scalar(megastructure_block, "type")),
+                owner=owner,
+                system_id=_as_optional_int(find_scalar(coordinate_block, "origin")),
+                planet_id=_as_optional_int(find_scalar(megastructure_block, "planet")),
+                build_queue_id=_as_optional_int(find_scalar(megastructure_block, "build_queue")),
+                dismantle_progress=_as_optional_float(
+                    find_scalar(megastructure_block, "dismantle_progress")
+                ),
+            )
+        )
+    return summaries
+
+
+def _extract_ship_designs(
+    gamestate_text: str, ship_design_ids: list[int]
+) -> list[ShipDesignSummary]:
+    ship_designs_block = extract_top_level_block(gamestate_text, "ship_design")
+    if ship_designs_block is None:
+        return []
+
+    summaries: list[ShipDesignSummary] = []
+    for design_id in ship_design_ids:
+        design_block = extract_numbered_block(ship_designs_block, design_id)
+        if design_block is None:
+            continue
+        summaries.append(
+            ShipDesignSummary(
+                design_id=design_id,
+                name=_extract_localized_name(design_block),
+                ship_size=_as_optional_str(find_scalar(design_block, "ship_size")),
+                auto_generated=_as_optional_bool(find_scalar(design_block, "auto_gen_design")),
+                section_templates=_extract_section_templates(design_block),
+                component_templates=_extract_component_templates(design_block),
+                required_components=[
+                    str(item) for item in find_all_scalars(design_block, "required_component")
+                ],
+            )
+        )
+    return summaries
+
+
+def _extract_technologies(country_block: str) -> dict[str, int]:
+    tech_status_block = extract_block(country_block, "tech_status")
+    if not tech_status_block:
+        return {}
+
+    technologies: dict[str, int] = {}
+    for tech, level in re.findall(
+        r'technology\s*=\s*"([^"]+)"\s+level\s*=\s*(-?\d+)', tech_status_block
+    ):
+        technologies[tech] = int(level)
+    return technologies
+
+
+def _extract_section_templates(design_block: str) -> list[str]:
+    sections: list[str] = []
+    for section_match in re.finditer(r"(?m)^\s*section\s*=", design_block):
+        section_block = extract_block(design_block, "section", section_match.start())
+        template = find_scalar(section_block or "", "template")
+        if template is not None:
+            sections.append(str(template))
+    return sections
+
+
+def _extract_component_templates(design_block: str) -> list[str]:
+    components: list[str] = []
+    for component_match in re.finditer(r"(?m)^\s*component\s*=", design_block):
+        component_block = extract_block(design_block, "component", component_match.start())
+        template = find_scalar(component_block or "", "template")
+        if template is not None:
+            components.append(str(template))
+    return components
+
+
+def _extract_starbases(gamestate_text: str, owned_fleets: list[int]) -> list[StarbaseSummary]:
+    starbase_mgr = extract_top_level_block(gamestate_text, "starbase_mgr") or ""
+    starbases_table = extract_block(starbase_mgr, "starbases")
+    ships_block = extract_top_level_block(gamestate_text, "ships") or ""
+    fleets_block = extract_top_level_block(gamestate_text, "fleet") or ""
+    galactic_objects = extract_top_level_block(gamestate_text, "galactic_object") or ""
+    if starbases_table is None:
+        return []
+
+    system_by_starbase = _map_starbase_systems(galactic_objects)
+    summaries: list[StarbaseSummary] = []
+    for starbase_id, starbase_block in iter_numbered_blocks(starbases_table):
+        station_id = _as_optional_int(find_scalar(starbase_block, "station"))
+        ship_block = extract_numbered_block(ships_block, station_id) if station_id is not None else None
+        fleet_id = _as_optional_int(find_scalar(ship_block or "", "fleet"))
+        if fleet_id not in owned_fleets:
+            continue
+        fleet_block = extract_numbered_block(fleets_block, fleet_id) if fleet_id is not None else None
+        system_id, system_name = system_by_starbase.get(starbase_id, (None, None))
+        modules_block = extract_block(starbase_block, "modules")
+        buildings_block = extract_block(starbase_block, "buildings")
+        summaries.append(
+            StarbaseSummary(
+                starbase_id=starbase_id,
+                name=_extract_localized_name(fleet_block or ship_block or starbase_block),
+                system_id=system_id,
+                system_name=system_name,
+                level=_as_optional_str(find_scalar(starbase_block, "level")),
+                starbase_type=_as_optional_str(find_scalar(starbase_block, "type")),
+                modules=[str(item).strip('"') for item in parse_indexed_value_block(modules_block or "")],
+                buildings=[str(item).strip('"') for item in parse_indexed_value_block(buildings_block or "")],
+                station_id=station_id,
+                fleet_id=fleet_id,
+                military_power=_as_optional_float(find_scalar(fleet_block or "", "military_power")),
+                build_queue_id=_as_optional_int(find_scalar(starbase_block, "build_queue")),
+                shipyard_build_queue_id=_as_optional_int(find_scalar(starbase_block, "shipyard_build_queue")),
+                construction_type=_as_optional_str(find_scalar(starbase_block, "construction_type")),
+            )
+        )
+    return summaries
+
+
+def _map_starbase_systems(galactic_objects: str) -> dict[int, tuple[int, str | None]]:
+    mapping: dict[int, tuple[int, str | None]] = {}
+    for system_id, system_block in iter_numbered_blocks(galactic_objects):
+        starbases_block = extract_block(system_block, "starbases")
+        for starbase_id in parse_int_list_block(starbases_block or ""):
+            if starbase_id == 4294967295:
+                continue
+            mapping[starbase_id] = (system_id, _extract_localized_name(system_block))
+    return mapping
 
 
 def _extract_planets(gamestate_text: str, planet_ids: list[int]) -> list[PlanetSummary]:

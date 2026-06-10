@@ -104,6 +104,50 @@ def extract_numbered_block(text: str, item_id: int) -> str | None:
     return text[open_index + 1 : close_index]
 
 
+def iter_numbered_blocks(text: str) -> Iterator[tuple[int, str]]:
+    """Yield top-level `123={...}` blocks from a table body."""
+    index = 0
+    depth = 0
+    in_string = False
+    escaped = False
+    while index < len(text):
+        char = text[index]
+        if in_string:
+            if char == "\\" and not escaped:
+                escaped = True
+                index += 1
+                continue
+            if char == '"' and not escaped:
+                in_string = False
+            escaped = False
+            index += 1
+            continue
+
+        if char == '"':
+            in_string = True
+            index += 1
+            continue
+        if char == "{":
+            depth += 1
+            index += 1
+            continue
+        if char == "}":
+            depth -= 1
+            index += 1
+            continue
+
+        if depth == 0 and (index == 0 or text[index - 1] == "\n"):
+            match = re.match(r"[ \t]*(\d+)\s*=\s*\{", text[index:])
+            if match:
+                open_index = index + match.end() - 1
+                close_index = find_matching_brace(text, open_index)
+                yield int(match.group(1)), text[open_index + 1 : close_index]
+                index = close_index + 1
+                continue
+
+        index += 1
+
+
 def find_matching_brace(text: str, open_index: int) -> int:
     depth = 0
     in_string = False
@@ -127,6 +171,28 @@ def find_matching_brace(text: str, open_index: int) -> int:
             if depth == 0:
                 return i
     raise ValueError("Unclosed Clausewitz block")
+
+
+def _brace_depth_at(text: str, offset: int) -> int:
+    depth = 0
+    in_string = False
+    escaped = False
+    for char in text[:offset]:
+        if in_string:
+            if char == "\\" and not escaped:
+                escaped = True
+                continue
+            if char == '"' and not escaped:
+                in_string = False
+            escaped = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+    return depth
 
 
 def find_scalar(text: str, key: str) -> Any:
@@ -156,6 +222,10 @@ def parse_int_list_block(text: str) -> list[int]:
 
 def parse_quoted_list_block(text: str) -> list[str]:
     return re.findall(r'"([^"]+)"', text)
+
+
+def parse_indexed_value_block(text: str) -> list[str]:
+    return re.findall(r"(?<![A-Za-z0-9_])\d+\s*=\s*(\"[^\"]*\"|[A-Za-z0-9_]+)", text)
 
 
 def find_all_scalars(text: str, key: str) -> list[Any]:

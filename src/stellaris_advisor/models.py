@@ -64,6 +64,47 @@ class PlanetSummary:
 
 
 @dataclass(slots=True)
+class StarbaseSummary:
+    starbase_id: int
+    name: str | None = None
+    system_id: int | None = None
+    system_name: str | None = None
+    level: str | None = None
+    starbase_type: str | None = None
+    modules: list[str] = field(default_factory=list)
+    buildings: list[str] = field(default_factory=list)
+    station_id: int | None = None
+    fleet_id: int | None = None
+    military_power: float | None = None
+    build_queue_id: int | None = None
+    shipyard_build_queue_id: int | None = None
+    construction_type: str | None = None
+
+
+@dataclass(slots=True)
+class MegastructureSummary:
+    megastructure_id: int
+    name: str | None = None
+    megastructure_type: str | None = None
+    owner: int | None = None
+    system_id: int | None = None
+    planet_id: int | None = None
+    build_queue_id: int | None = None
+    dismantle_progress: float | None = None
+
+
+@dataclass(slots=True)
+class ShipDesignSummary:
+    design_id: int
+    name: str | None = None
+    ship_size: str | None = None
+    auto_generated: bool | None = None
+    section_templates: list[str] = field(default_factory=list)
+    component_templates: list[str] = field(default_factory=list)
+    required_components: list[str] = field(default_factory=list)
+
+
+@dataclass(slots=True)
 class EmpireSummary:
     country_id: int
     name: str | None = None
@@ -87,6 +128,13 @@ class EmpireSummary:
     pop_faction_members_power: float | None = None
     owned_planets: list[int] = field(default_factory=list)
     planets: list[PlanetSummary] = field(default_factory=list)
+    owned_fleets: list[int] = field(default_factory=list)
+    starbase_capacity: int | None = None
+    starbases: list[StarbaseSummary] = field(default_factory=list)
+    megastructures: list[MegastructureSummary] = field(default_factory=list)
+    ship_design_ids: list[int] = field(default_factory=list)
+    ship_designs: list[ShipDesignSummary] = field(default_factory=list)
+    technologies: dict[str, int] = field(default_factory=dict)
     monthly_income: dict[str, float] = field(default_factory=dict)
     fleet_size: float | None = None
     used_naval_capacity: float | None = None

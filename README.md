@@ -19,6 +19,8 @@ The MVP can already:
 - fall back to summing current-month income entries when a save lacks a precomputed monthly resource summary;
 - map owned leader IDs to first-pass leader details, including name localization keys, class, level, age, job, ethic, traits, location, and council position;
 - map owned planet IDs to first-pass planet details, including planet class, size, pops, stability, crime/deviancy, amenities, housing, designation, districts, building cache IDs, production, upkeep, and net output;
+- map owned starbases to systems, levels, modules, buildings, station fleets, and military power;
+- extract player-owned megastructures, ship designs, researched technologies, grouped tradition details, and ascension perks;
 - generate a Chinese Markdown report with early findings.
 
 当前 MVP 已经能够：
@@ -33,6 +35,8 @@ The MVP can already:
 - 当存档没有预先汇总的月收入时，回退为累加当月收入分项；
 - 将拥有的领袖 ID 映射到第一批领袖详情，包括姓名本地化 key、职业、等级、年龄、岗位、思潮、特质、位置和内阁席位；
 - 将拥有的星球 ID 映射到第一批星球详情，包括星球类型、大小、人口、稳定度、犯罪/偏差、舒适度、住房、定位、区划、建筑缓存 ID、产出、维护和净产出；
+- 将玩家拥有的恒星基地映射到星系、等级、模块、建筑、基地舰队和军事实力；
+- 提取玩家拥有的巨型结构、舰船设计、已研究科技、按传统树分组的传统明细和飞升天赋；
 - 生成中文 Markdown 局势报告和基础问题提示。
 
 ## Design Philosophy / 设计思路

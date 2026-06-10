@@ -26,6 +26,7 @@ def build_report(
                 f"国民理念: {_format_list(empire.civics)}",
                 f"传统组: {_format_list(empire.tradition_categories)}",
                 f"已选传统数: {len(empire.traditions)}",
+                f"传统明细: {_format_tradition_details(empire)}",
                 f"飞升: {_format_list(empire.ascension_perks)}",
                 f"当前议程: {_format_value(empire.council_agenda)} ({_format_number(empire.council_agenda_progress)})",
                 f"启用法令: {_format_list(empire.edicts)}",
@@ -35,6 +36,11 @@ def build_report(
                 f"派系状态: {_format_faction_status(empire)}",
                 f"殖民地数量: {len(empire.planets) or len(empire.owned_planets)}",
                 f"星球概览: {_format_planets(empire)}",
+                f"恒星基地: {len(empire.starbases)} / {_format_number(empire.starbase_capacity)}",
+                f"恒星基地概览: {_format_starbases(empire)}",
+                f"巨型结构: {_format_megastructures(empire)}",
+                f"舰船设计: {_format_ship_designs(empire)}",
+                f"已研究科技: {_format_technologies(empire)}",
                 f"帝国规模: {_format_number(empire.empire_size)}",
                 f"智慧人口: {_format_number(empire.sapient_pops)}",
                 f"舰队容量使用: {_format_number(empire.used_naval_capacity)}",
@@ -228,6 +234,94 @@ def _format_planets(empire: EmpireSummary, limit: int = 6) -> str:
         parts.append(f"{planet.name or planet.planet_id} ({', '.join(stats)})")
     suffix = f" (+{len(empire.planets) - limit})" if len(empire.planets) > limit else ""
     return " | ".join(parts) + suffix
+
+
+def _format_starbases(empire: EmpireSummary, limit: int = 6) -> str:
+    if not empire.starbases:
+        return "尚未解析详情"
+    parts = []
+    for starbase in empire.starbases[:limit]:
+        system = starbase.system_name or (
+            f"system {starbase.system_id}" if starbase.system_id is not None else "unknown system"
+        )
+        modules = f"; modules {', '.join(starbase.modules[:3])}" if starbase.modules else ""
+        buildings = f"; buildings {', '.join(starbase.buildings[:2])}" if starbase.buildings else ""
+        parts.append(
+            f"{system} ({starbase.level or 'unknown'}, power {_format_number(starbase.military_power)}{modules}{buildings})"
+        )
+    suffix = f" (+{len(empire.starbases) - limit})" if len(empire.starbases) > limit else ""
+    return " | ".join(parts) + suffix
+
+
+def _format_megastructures(empire: EmpireSummary, limit: int = 6) -> str:
+    if not empire.megastructures:
+        return "未发现玩家拥有的巨型结构"
+    parts = []
+    for megastructure in empire.megastructures[:limit]:
+        location = ""
+        if megastructure.system_id is not None:
+            location = f", system {megastructure.system_id}"
+        parts.append(
+            f"{megastructure.name or megastructure.megastructure_id} "
+            f"({_format_value(megastructure.megastructure_type)}{location})"
+        )
+    suffix = (
+        f" (+{len(empire.megastructures) - limit})"
+        if len(empire.megastructures) > limit
+        else ""
+    )
+    return " | ".join(parts) + suffix
+
+
+def _format_ship_designs(empire: EmpireSummary, limit: int = 6) -> str:
+    if not empire.ship_designs:
+        if empire.ship_design_ids:
+            return f"已发现 {len(empire.ship_design_ids)} 个设计 ID，尚未解析详情"
+        return "尚未发现舰船设计"
+    parts = []
+    for design in empire.ship_designs[:limit]:
+        mode = "auto" if design.auto_generated else "manual"
+        components = (
+            f"; components {', '.join(design.component_templates[:3])}"
+            if design.component_templates
+            else ""
+        )
+        parts.append(
+            f"{design.name or design.design_id} "
+            f"({_format_value(design.ship_size)}, {mode}{components})"
+        )
+    suffix = f" (+{len(empire.ship_designs) - limit})" if len(empire.ship_designs) > limit else ""
+    return " | ".join(parts) + suffix
+
+
+def _format_technologies(empire: EmpireSummary, limit: int = 10) -> str:
+    if not empire.technologies:
+        return "尚未解析"
+    shown = list(empire.technologies.keys())[:limit]
+    suffix = f" (+{len(empire.technologies) - limit})" if len(empire.technologies) > limit else ""
+    return f"{len(empire.technologies)} 项: " + ", ".join(shown) + suffix
+
+
+def _format_tradition_details(empire: EmpireSummary, limit: int = 6) -> str:
+    if not empire.traditions:
+        return "尚未选择传统"
+    grouped: dict[str, list[str]] = {}
+    for tradition in empire.traditions:
+        tree = _tradition_tree_name(tradition)
+        grouped.setdefault(tree, []).append(tradition)
+    parts = []
+    for tree, traditions in grouped.items():
+        shown = ", ".join(traditions[:limit])
+        suffix = f" (+{len(traditions) - limit})" if len(traditions) > limit else ""
+        parts.append(f"{tree}: {shown}{suffix}")
+    return " | ".join(parts)
+
+
+def _tradition_tree_name(tradition: str) -> str:
+    if not tradition.startswith("tr_"):
+        return "unknown"
+    remainder = tradition[3:]
+    return remainder.split("_", 1)[0] if "_" in remainder else remainder
 
 
 def _format_resources(resources: dict[str, float]) -> str:
