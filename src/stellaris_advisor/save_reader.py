@@ -16,7 +16,7 @@ from .clausewitz import (
     parse_top_level_assignments,
     sum_nested_resource_blocks,
 )
-from .models import EmpireSummary, LeaderSummary, SaveGame, SaveMetadata
+from .models import EmpireSummary, LeaderSummary, PlanetSummary, SaveGame, SaveMetadata
 
 
 META_KEYS = {"version", "name", "date", "player", "ironman"}
@@ -118,6 +118,7 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
     policy_flags_block = extract_block(country_block, "policy_flags")
     owned_leaders_block = extract_block(country_block, "owned_leaders")
     owned_leaders = parse_int_list_block(owned_leaders_block or "")
+    owned_planets = parse_int_list_block(owned_planets_block or "")
     pop_factions_block = extract_block(country_block, "standard_pop_factions_module")
     is_gestalt = "ethic_gestalt_consciousness" in [
         str(item) for item in find_all_scalars(ethos_block, "ethic")
@@ -150,7 +151,8 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
         pop_faction_members_power=_as_optional_float(
             find_scalar(pop_factions_block or "", "total_faction_members_power")
         ),
-        owned_planets=parse_int_list_block(owned_planets_block or ""),
+        owned_planets=owned_planets,
+        planets=_extract_planets(gamestate_text, owned_planets),
         monthly_income=monthly_income,
         fleet_size=_as_optional_float(find_scalar(country_block, "fleet_size")),
         used_naval_capacity=_as_optional_float(find_scalar(country_block, "used_naval_capacity")),
@@ -160,6 +162,58 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
         economy_power=_as_optional_float(find_scalar(country_block, "economy_power")),
         victory_rank=_as_optional_int(find_scalar(country_block, "victory_rank")),
     )
+
+
+def _extract_planets(gamestate_text: str, planet_ids: list[int]) -> list[PlanetSummary]:
+    planets_block = extract_top_level_block(gamestate_text, "planets")
+    if planets_block is None:
+        return []
+
+    planets: list[PlanetSummary] = []
+    for planet_id in planet_ids:
+        planet_block = extract_numbered_block(planets_block, planet_id)
+        if planet_block is None or not planet_block.strip():
+            continue
+        districts_block = extract_block(planet_block, "districts")
+        buildings_block = extract_block(planet_block, "buildings_cache")
+        deposits_block = extract_block(planet_block, "deposits")
+        pop_groups_block = extract_block(planet_block, "pop_groups")
+        pop_jobs_block = extract_block(planet_block, "pop_jobs")
+        upkeep_block = extract_block(planet_block, "upkeep")
+        produces_block = extract_block(planet_block, "produces")
+        profits_block = extract_block(planet_block, "profits")
+        planets.append(
+            PlanetSummary(
+                planet_id=planet_id,
+                name=_extract_localized_name(planet_block),
+                planet_class=_as_optional_str(find_scalar(planet_block, "planet_class")),
+                planet_size=_as_optional_int(find_scalar(planet_block, "planet_size")),
+                owner=_as_optional_int(find_scalar(planet_block, "owner")),
+                controller=_as_optional_int(find_scalar(planet_block, "controller")),
+                governor_id=_as_optional_int(find_scalar(planet_block, "governor")),
+                designation=_as_optional_str(find_scalar(planet_block, "designation")),
+                final_designation=_as_optional_str(find_scalar(planet_block, "final_designation")),
+                ascension_tier=_as_optional_int(find_scalar(planet_block, "ascension_tier")),
+                districts=parse_int_list_block(districts_block or ""),
+                buildings=parse_int_list_block(buildings_block or ""),
+                deposits=parse_int_list_block(deposits_block or ""),
+                pop_groups=parse_int_list_block(pop_groups_block or ""),
+                pop_jobs=parse_int_list_block(pop_jobs_block or ""),
+                num_sapient_pops=_as_optional_float(find_scalar(planet_block, "num_sapient_pops")),
+                stability=_as_optional_float(find_scalar(planet_block, "stability")),
+                crime=_as_optional_float(find_scalar(planet_block, "crime")),
+                amenities=_as_optional_float(find_scalar(planet_block, "amenities")),
+                amenities_usage=_as_optional_float(find_scalar(planet_block, "amenities_usage")),
+                free_amenities=_as_optional_float(find_scalar(planet_block, "free_amenities")),
+                free_housing=_as_optional_float(find_scalar(planet_block, "free_housing")),
+                total_housing=_as_optional_float(find_scalar(planet_block, "total_housing")),
+                housing_usage=_as_optional_float(find_scalar(planet_block, "housing_usage")),
+                upkeep=parse_resource_block(upkeep_block or ""),
+                produces=parse_resource_block(produces_block or ""),
+                profits=parse_resource_block(profits_block or ""),
+            )
+        )
+    return planets
 
 
 def _extract_leaders(gamestate_text: str, leader_ids: list[int]) -> list[LeaderSummary]:
@@ -218,6 +272,18 @@ def _extract_localized_name(block: str) -> str | None:
     if name_block is None:
         value = find_scalar(block, "name")
         return _as_optional_str(value)
+    variables_block = extract_block(name_block, "variables")
+    if variables_block:
+        name_variable_match = find_scalar(variables_block, "NAME")
+        if name_variable_match is not None:
+            return _as_optional_str(name_variable_match)
+        variable_keys = [
+            str(item)
+            for item in find_all_scalars(variables_block, "key")
+            if str(item) not in {"NAME"} and not str(item).isdigit()
+        ]
+        if variable_keys:
+            return " ".join(variable_keys)
     key = find_scalar(name_block, "key")
     return _as_optional_str(key)
 

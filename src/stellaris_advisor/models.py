@@ -33,6 +33,37 @@ class LeaderSummary:
 
 
 @dataclass(slots=True)
+class PlanetSummary:
+    planet_id: int
+    name: str | None = None
+    planet_class: str | None = None
+    planet_size: int | None = None
+    owner: int | None = None
+    controller: int | None = None
+    governor_id: int | None = None
+    designation: str | None = None
+    final_designation: str | None = None
+    ascension_tier: int | None = None
+    districts: list[int] = field(default_factory=list)
+    buildings: list[int] = field(default_factory=list)
+    deposits: list[int] = field(default_factory=list)
+    pop_groups: list[int] = field(default_factory=list)
+    pop_jobs: list[int] = field(default_factory=list)
+    num_sapient_pops: float | None = None
+    stability: float | None = None
+    crime: float | None = None
+    amenities: float | None = None
+    amenities_usage: float | None = None
+    free_amenities: float | None = None
+    free_housing: float | None = None
+    total_housing: float | None = None
+    housing_usage: float | None = None
+    upkeep: dict[str, float] = field(default_factory=dict)
+    produces: dict[str, float] = field(default_factory=dict)
+    profits: dict[str, float] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
 class EmpireSummary:
     country_id: int
     name: str | None = None
@@ -55,6 +86,7 @@ class EmpireSummary:
     pop_faction_members: int | None = None
     pop_faction_members_power: float | None = None
     owned_planets: list[int] = field(default_factory=list)
+    planets: list[PlanetSummary] = field(default_factory=list)
     monthly_income: dict[str, float] = field(default_factory=dict)
     fleet_size: float | None = None
     used_naval_capacity: float | None = None

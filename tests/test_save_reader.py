@@ -99,6 +99,54 @@ country=
         }
     }
 }
+planets=
+{
+    3=
+    {
+        name={ key="Capital" literal=yes }
+        planet_class="pc_continental"
+        planet_size=20
+        owner=0
+        controller=0
+        governor=10
+        districts={ 1 2 3 }
+        buildings_cache={ 4 5 }
+        deposits={ 6 7 }
+        pop_groups={ 8 9 }
+        pop_jobs={ 10 11 12 }
+        stability=70
+        crime=1.5
+        amenities=30
+        amenities_usage=20
+        free_amenities=10
+        free_housing=5
+        total_housing=60
+        housing_usage=55
+        num_sapient_pops=52
+        designation="col_capital"
+        final_designation="col_capital"
+        ascension_tier=1
+        upkeep={ energy=2 }
+        produces={ minerals=10 }
+        profits={ minerals=8 }
+    }
+    197=
+    {
+        name=
+        {
+            key="NEW_COLONY_NAME_1"
+            variables={ { key="NAME" value={ key="Strom" } } }
+        }
+        planet_class="pc_ocean"
+        planet_size=14
+        owner=0
+        controller=0
+        stability=45
+        free_housing=-1
+        free_amenities=-2
+        num_sapient_pops=10
+    }
+}
 leaders=
 {
     10=
@@ -172,6 +220,18 @@ leaders=
     assert empire.pop_factions_applicable is False
     assert empire.pop_faction_members == 0
     assert empire.owned_planets == [3, 197]
+    assert len(empire.planets) == 2
+    assert empire.planets[0].name == "Capital"
+    assert empire.planets[0].planet_class == "pc_continental"
+    assert empire.planets[0].planet_size == 20
+    assert empire.planets[0].districts == [1, 2, 3]
+    assert empire.planets[0].buildings == [4, 5]
+    assert empire.planets[0].num_sapient_pops == 52
+    assert empire.planets[0].stability == 70
+    assert empire.planets[0].free_housing == 5
+    assert empire.planets[0].profits["minerals"] == 8
+    assert empire.planets[1].name == "Strom"
+    assert empire.planets[1].free_housing == -1
     assert empire.monthly_income["alloys"] == 20
 
 

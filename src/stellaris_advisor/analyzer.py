@@ -33,7 +33,8 @@ def build_report(
                 f"领袖数量: {len(empire.leaders) or len(empire.owned_leaders)}",
                 f"领袖概览: {_format_leaders(empire)}",
                 f"派系状态: {_format_faction_status(empire)}",
-                f"殖民地数量: {len(empire.owned_planets)}",
+                f"殖民地数量: {len(empire.planets) or len(empire.owned_planets)}",
+                f"星球概览: {_format_planets(empire)}",
                 f"帝国规模: {_format_number(empire.empire_size)}",
                 f"智慧人口: {_format_number(empire.sapient_pops)}",
                 f"舰队容量使用: {_format_number(empire.used_naval_capacity)}",
@@ -78,8 +79,9 @@ def build_report(
 
     if empire is not None:
         findings.extend(_build_empire_findings(empire))
+        findings.extend(_build_planet_findings(empire))
 
-    if "planet" not in save.gamestate:
+    if empire is not None and not empire.planets:
         findings.append(
             Finding(
                 title="星球数据尚未结构化",
@@ -90,7 +92,7 @@ def build_report(
         )
 
     next_steps = [
-        "解析 owned_planets 对应的星球块，提取岗位、住房、稳定度、区划、建筑和建造队列。",
+        "细化星球解析：把区划、建筑、岗位 ID 映射到定义名，并提取建造队列和失业/岗位缺口。",
         "解析恒星基地、舰队、舰船设计和补员队列，确认军事实力为零是否为真实局势或生物舰船字段差异。",
         "解析领袖详情和内阁席位，把 owned_leaders ID 映射到姓名、等级、岗位和特质。",
         "解析 galactic_object 和超空间航道，并在 player_visible 模式下做边境与 chokepoint 分析。",
@@ -208,6 +210,26 @@ def _format_leaders(empire: EmpireSummary, limit: int = 6) -> str:
     return " | ".join(parts) + suffix
 
 
+def _format_planets(empire: EmpireSummary, limit: int = 6) -> str:
+    if not empire.planets:
+        return "尚未解析详情"
+    parts = []
+    for planet in empire.planets[:limit]:
+        stats = [
+            planet.planet_class or "unknown",
+            f"size {_format_number(planet.planet_size)}",
+            f"pops {_format_number(planet.num_sapient_pops)}",
+            f"stab {_format_number(planet.stability)}",
+            f"housing {_format_number(planet.free_housing)}",
+            f"amen {_format_number(planet.free_amenities)}",
+        ]
+        if planet.designation:
+            stats.append(planet.designation)
+        parts.append(f"{planet.name or planet.planet_id} ({', '.join(stats)})")
+    suffix = f" (+{len(empire.planets) - limit})" if len(empire.planets) > limit else ""
+    return " | ".join(parts) + suffix
+
+
 def _format_resources(resources: dict[str, float]) -> str:
     preferred = [
         "energy",
@@ -280,4 +302,38 @@ def _build_empire_findings(empire: EmpireSummary) -> list[Finding]:
             )
         )
 
+    return findings
+
+
+def _build_planet_findings(empire: EmpireSummary) -> list[Finding]:
+    findings: list[Finding] = []
+    for planet in empire.planets:
+        label = planet.name or str(planet.planet_id)
+        if planet.stability is not None and planet.stability < 50:
+            findings.append(
+                Finding(
+                    title=f"{label} 稳定度偏低",
+                    severity="medium",
+                    detail=f"该星球稳定度约为 {_format_number(planet.stability)}。",
+                    recommendation="优先检查住房、舒适度、犯罪/偏差、岗位和派系/幸福度来源。",
+                )
+            )
+        if planet.free_housing is not None and planet.free_housing < 0:
+            findings.append(
+                Finding(
+                    title=f"{label} 住房不足",
+                    severity="medium",
+                    detail=f"该星球空余住房约为 {_format_number(planet.free_housing)}。",
+                    recommendation="考虑建设住房区划/建筑、调整星球定位，或迁移/控制人口增长。",
+                )
+            )
+        if planet.free_amenities is not None and planet.free_amenities < 0:
+            findings.append(
+                Finding(
+                    title=f"{label} 舒适度不足",
+                    severity="medium",
+                    detail=f"该星球空余舒适度约为 {_format_number(planet.free_amenities)}。",
+                    recommendation="补充维护/服务类岗位或相关建筑，避免稳定度继续下滑。",
+                )
+            )
     return findings
