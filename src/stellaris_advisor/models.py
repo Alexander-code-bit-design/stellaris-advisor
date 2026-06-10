@@ -17,6 +17,22 @@ class SaveMetadata:
 
 
 @dataclass(slots=True)
+class LeaderSummary:
+    leader_id: int
+    name: str | None = None
+    leader_class: str | None = None
+    level: int | None = None
+    age: int | None = None
+    gender: str | None = None
+    ethic: str | None = None
+    job: str | None = None
+    traits: list[str] = field(default_factory=list)
+    location_type: str | None = None
+    location_id: int | None = None
+    council_position_id: int | None = None
+
+
+@dataclass(slots=True)
 class EmpireSummary:
     country_id: int
     name: str | None = None
@@ -34,6 +50,7 @@ class EmpireSummary:
     edicts: list[str] = field(default_factory=list)
     policy_flags: list[str] = field(default_factory=list)
     owned_leaders: list[int] = field(default_factory=list)
+    leaders: list[LeaderSummary] = field(default_factory=list)
     pop_factions_applicable: bool | None = None
     pop_faction_members: int | None = None
     pop_faction_members_power: float | None = None

@@ -16,7 +16,7 @@ from .clausewitz import (
     parse_top_level_assignments,
     sum_nested_resource_blocks,
 )
-from .models import EmpireSummary, SaveGame, SaveMetadata
+from .models import EmpireSummary, LeaderSummary, SaveGame, SaveMetadata
 
 
 META_KEYS = {"version", "name", "date", "player", "ironman"}
@@ -117,6 +117,7 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
     edicts_block = extract_block(country_block, "edicts") or ""
     policy_flags_block = extract_block(country_block, "policy_flags")
     owned_leaders_block = extract_block(country_block, "owned_leaders")
+    owned_leaders = parse_int_list_block(owned_leaders_block or "")
     pop_factions_block = extract_block(country_block, "standard_pop_factions_module")
     is_gestalt = "ethic_gestalt_consciousness" in [
         str(item) for item in find_all_scalars(ethos_block, "ethic")
@@ -140,7 +141,8 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
         ascension_perks=parse_quoted_list_block(ascension_perks_block or ""),
         edicts=[str(item) for item in find_all_scalars(edicts_block, "edict")],
         policy_flags=parse_quoted_list_block(policy_flags_block or ""),
-        owned_leaders=parse_int_list_block(owned_leaders_block or ""),
+        owned_leaders=owned_leaders,
+        leaders=_extract_leaders(gamestate_text, owned_leaders),
         pop_factions_applicable=False if is_gestalt else pop_factions_block is not None,
         pop_faction_members=_as_optional_int(
             find_scalar(pop_factions_block or "", "total_faction_members")
@@ -158,6 +160,57 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
         economy_power=_as_optional_float(find_scalar(country_block, "economy_power")),
         victory_rank=_as_optional_int(find_scalar(country_block, "victory_rank")),
     )
+
+
+def _extract_leaders(gamestate_text: str, leader_ids: list[int]) -> list[LeaderSummary]:
+    leaders_block = extract_top_level_block(gamestate_text, "leaders")
+    if leaders_block is None:
+        return []
+
+    leaders: list[LeaderSummary] = []
+    for leader_id in leader_ids:
+        leader_block = extract_numbered_block(leaders_block, leader_id)
+        if leader_block is None:
+            continue
+        location_block = extract_block(leader_block, "location") or ""
+        council_location_block = extract_block(leader_block, "council_location") or ""
+        leaders.append(
+            LeaderSummary(
+                leader_id=leader_id,
+                name=_extract_leader_name(leader_block),
+                leader_class=_as_optional_str(find_scalar(leader_block, "class")),
+                level=_as_optional_int(find_scalar(leader_block, "level")),
+                age=_as_optional_int(find_scalar(leader_block, "age")),
+                gender=_as_optional_str(find_scalar(leader_block, "gender")),
+                ethic=_as_optional_str(find_scalar(leader_block, "ethic")),
+                job=_as_optional_str(find_scalar(leader_block, "job")),
+                traits=[str(item) for item in find_all_scalars(leader_block, "traits")],
+                location_type=_as_optional_str(find_scalar(location_block, "type")),
+                location_id=_as_optional_int(find_scalar(location_block, "id")),
+                council_position_id=_as_optional_int(find_scalar(council_location_block, "id")),
+            )
+        )
+    return leaders
+
+
+def _extract_leader_name(block: str) -> str | None:
+    name_block = extract_block(block, "name")
+    if name_block is None:
+        return _as_optional_str(find_scalar(block, "name"))
+
+    full_names_block = extract_block(name_block, "full_names") or name_block
+    variables_block = extract_block(full_names_block, "variables")
+    if variables_block:
+        parts = [
+            str(item)
+            for item in find_all_scalars(variables_block, "key")
+            if not str(item).isdigit()
+        ]
+        if parts:
+            return " ".join(parts)
+
+    key = find_scalar(full_names_block, "key") or find_scalar(name_block, "key")
+    return _as_optional_str(key)
 
 
 def _extract_localized_name(block: str) -> str | None:

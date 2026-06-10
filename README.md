@@ -17,6 +17,7 @@ The MVP can already:
 - extract first-pass empire identity fields, including ethics, civics, authority, government type, origin, traditions, ascension perks, edicts, policy flags, council agenda, and owned leader IDs;
 - detect whether pop factions are applicable, unavailable for gestalt empires, or applicable but not yet formed;
 - fall back to summing current-month income entries when a save lacks a precomputed monthly resource summary;
+- map owned leader IDs to first-pass leader details, including name localization keys, class, level, age, job, ethic, traits, location, and council position;
 - generate a Chinese Markdown report with early findings.
 
 当前 MVP 已经能够：
@@ -29,6 +30,7 @@ The MVP can already:
 - 提取第一批帝国身份信息，包括思潮、国民理念、权力制度、政体、起源、传统、飞升、法令、政策标记、内阁议程和拥有的领袖 ID；
 - 判断派系是否适用、格式塔是否不适用，或普通政体是否尚未形成派系；
 - 当存档没有预先汇总的月收入时，回退为累加当月收入分项；
+- 将拥有的领袖 ID 映射到第一批领袖详情，包括姓名本地化 key、职业、等级、年龄、岗位、思潮、特质、位置和内阁席位；
 - 生成中文 Markdown 局势报告和基础问题提示。
 
 ## Design Philosophy / 设计思路

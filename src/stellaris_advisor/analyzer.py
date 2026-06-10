@@ -30,7 +30,8 @@ def build_report(
                 f"当前议程: {_format_value(empire.council_agenda)} ({_format_number(empire.council_agenda_progress)})",
                 f"启用法令: {_format_list(empire.edicts)}",
                 f"政策标记: {_format_list(empire.policy_flags, limit=6)}",
-                f"领袖数量: {len(empire.owned_leaders)}",
+                f"领袖数量: {len(empire.leaders) or len(empire.owned_leaders)}",
+                f"领袖概览: {_format_leaders(empire)}",
                 f"派系状态: {_format_faction_status(empire)}",
                 f"殖民地数量: {len(empire.owned_planets)}",
                 f"帝国规模: {_format_number(empire.empire_size)}",
@@ -184,6 +185,27 @@ def _format_faction_status(empire: EmpireSummary) -> str:
     if empire.pop_faction_members == 0:
         return "适用，但当前尚未形成派系"
     return f"适用，派系成员 {empire.pop_faction_members}"
+
+
+def _format_leaders(empire: EmpireSummary, limit: int = 6) -> str:
+    if not empire.leaders:
+        return "尚未解析详情"
+    parts = []
+    for leader in empire.leaders[:limit]:
+        traits = f"; {', '.join(leader.traits[:2])}" if leader.traits else ""
+        location = ""
+        if leader.location_type:
+            location = f"; {leader.location_type}"
+            if leader.location_id is not None:
+                location += f" {leader.location_id}"
+        council = ""
+        if leader.council_position_id is not None:
+            council = f"; council {leader.council_position_id}"
+        parts.append(
+            f"{leader.name or leader.leader_id} ({leader.leader_class or 'unknown'} L{_format_number(leader.level)}{location}{council}{traits})"
+        )
+    suffix = f" (+{len(empire.leaders) - limit})" if len(empire.leaders) > limit else ""
+    return " | ".join(parts) + suffix
 
 
 def _format_resources(resources: dict[str, float]) -> str:

@@ -99,6 +99,40 @@ country=
         }
     }
 }
+leaders=
+{
+    10=
+    {
+        name={ full_names={ key="Leader One" } }
+        class="official"
+        gender=female
+        age=40
+        job="politician"
+        ethic="ethic_authoritarian"
+        location={ type=planet id=3 }
+        council_location={ type=council_position id=99 }
+        traits="leader_trait_principled"
+        level=2
+    }
+    11=
+    {
+        name=
+        {
+            full_names=
+            {
+                key="%LEADER_2%"
+                variables=
+                {
+                    { key="1" value={ key="First" } }
+                    { key="2" value={ key="Second" } }
+                }
+            }
+        }
+        class="scientist"
+        traits="leader_trait_spark_of_genius"
+        level=3
+    }
+}
 """
     with ZipFile(save_path, "w") as archive:
         archive.writestr("meta", meta)
@@ -124,6 +158,17 @@ country=
     assert empire.edicts == ["farming_subsidies", "drone_overdrive"]
     assert empire.policy_flags == ["diplo_stance_isolationist", "unrestricted_wars"]
     assert empire.owned_leaders == [10, 11, 12]
+    assert len(empire.leaders) == 2
+    assert empire.leaders[0].name == "Leader One"
+    assert empire.leaders[0].leader_class == "official"
+    assert empire.leaders[0].level == 2
+    assert empire.leaders[0].location_type == "planet"
+    assert empire.leaders[0].location_id == 3
+    assert empire.leaders[0].council_position_id == 99
+    assert empire.leaders[0].traits == ["leader_trait_principled"]
+    assert empire.leaders[1].name == "First Second"
+    assert empire.leaders[1].leader_class == "scientist"
+    assert empire.leaders[1].traits == ["leader_trait_spark_of_genius"]
     assert empire.pop_factions_applicable is False
     assert empire.pop_faction_members == 0
     assert empire.owned_planets == [3, 197]

@@ -130,7 +130,7 @@ def find_matching_brace(text: str, open_index: int) -> int:
 
 
 def find_scalar(text: str, key: str) -> Any:
-    match = re.search(r"(?m)^\s*" + re.escape(key) + r"\s*=\s*(\"[^\"]*\"|[^\s{}]+)", text)
+    match = re.search(r"(?<![A-Za-z0-9_])" + re.escape(key) + r"\s*=\s*(\"[^\"]*\"|[^\s{}]+)", text)
     if not match:
         return None
     return parse_scalar(match.group(1))
