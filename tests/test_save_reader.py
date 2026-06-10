@@ -73,14 +73,28 @@ country=
             { edict="farming_subsidies" }
             { edict="drone_overdrive" }
         }
+        standard_pop_factions_module=
+        {
+            total_faction_members_power=0
+            total_faction_members=0
+        }
         owned_planets={ 3 197 }
         budget=
         {
-            resources=
+            current_month=
             {
-                energy=100
-                alloys=20
-                physics_research=30
+                income=
+                {
+                    country_base=
+                    {
+                        energy=100
+                        alloys=20
+                    }
+                    orbital_research_deposits=
+                    {
+                        physics_research=30
+                    }
+                }
             }
         }
     }
@@ -110,5 +124,70 @@ country=
     assert empire.edicts == ["farming_subsidies", "drone_overdrive"]
     assert empire.policy_flags == ["diplo_stance_isolationist", "unrestricted_wars"]
     assert empire.owned_leaders == [10, 11, 12]
+    assert empire.pop_factions_applicable is False
+    assert empire.pop_faction_members == 0
     assert empire.owned_planets == [3, 197]
     assert empire.monthly_income["alloys"] == 20
+
+
+def test_read_normal_empire_pop_faction_module(tmp_path: Path) -> None:
+    save_path = tmp_path / "normal_factions.sav"
+    meta = 'version="4.3.7"\nname="Normal"\ndate="2200.01.10"\n'
+    gamestate = """
+version="4.3.7"
+name="Normal"
+date="2200.01.10"
+player=
+{
+    {
+        country=0
+    }
+}
+country=
+{
+    0=
+    {
+        name={ key="Normal Empire" literal=yes }
+        ethos=
+        {
+            ethic="ethic_authoritarian"
+            ethic="ethic_materialist"
+        }
+        government=
+        {
+            type="gov_executive_committee"
+            authority="auth_oligarchic"
+            civics={ "civic_meritocracy" }
+            origin="origin_default"
+        }
+        standard_pop_factions_module=
+        {
+            total_faction_members_power=0
+            total_faction_members=0
+        }
+        budget=
+        {
+            current_month=
+            {
+                income=
+                {
+                    country_base={ energy=20 minerals=20 }
+                    trade_policy={ energy=5 trade=5 }
+                }
+            }
+        }
+    }
+}
+"""
+    with ZipFile(save_path, "w") as archive:
+        archive.writestr("meta", meta)
+        archive.writestr("gamestate", gamestate)
+
+    save = read_save(save_path)
+
+    assert save.player_empire is not None
+    empire = save.player_empire
+    assert empire.pop_factions_applicable is True
+    assert empire.pop_faction_members == 0
+    assert empire.monthly_income["energy"] == 25
+    assert empire.monthly_income["minerals"] == 20

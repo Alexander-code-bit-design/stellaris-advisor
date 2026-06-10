@@ -31,6 +31,7 @@ def build_report(
                 f"启用法令: {_format_list(empire.edicts)}",
                 f"政策标记: {_format_list(empire.policy_flags, limit=6)}",
                 f"领袖数量: {len(empire.owned_leaders)}",
+                f"派系状态: {_format_faction_status(empire)}",
                 f"殖民地数量: {len(empire.owned_planets)}",
                 f"帝国规模: {_format_number(empire.empire_size)}",
                 f"智慧人口: {_format_number(empire.sapient_pops)}",
@@ -171,6 +172,18 @@ def _format_list(values: list[object], limit: int = 8) -> str:
     shown = [str(value) for value in values[:limit]]
     suffix = f" (+{len(values) - limit})" if len(values) > limit else ""
     return ", ".join(shown) + suffix
+
+
+def _format_faction_status(empire: EmpireSummary) -> str:
+    if empire.pop_factions_applicable is False:
+        return "不适用（格式塔或无派系政体）"
+    if empire.pop_factions_applicable is None:
+        return "未知"
+    if empire.pop_faction_members is None:
+        return "适用，但尚未解析成员数"
+    if empire.pop_faction_members == 0:
+        return "适用，但当前尚未形成派系"
+    return f"适用，派系成员 {empire.pop_faction_members}"
 
 
 def _format_resources(resources: dict[str, float]) -> str:

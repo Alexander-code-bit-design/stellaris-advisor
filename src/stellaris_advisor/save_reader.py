@@ -14,6 +14,7 @@ from .clausewitz import (
     parse_quoted_list_block,
     parse_resource_block,
     parse_top_level_assignments,
+    sum_nested_resource_blocks,
 )
 from .models import EmpireSummary, SaveGame, SaveMetadata
 
@@ -100,6 +101,11 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
 
     budget_block = extract_block(country_block, "budget") or ""
     income_totals = extract_block(budget_block, "resources")
+    current_month_block = extract_block(budget_block, "current_month") or ""
+    income_block = extract_block(current_month_block, "income")
+    monthly_income = parse_resource_block(income_totals or "")
+    if not monthly_income and income_block:
+        monthly_income = sum_nested_resource_blocks(income_block)
 
     owned_planets_block = extract_block(country_block, "owned_planets")
     government_block = extract_block(country_block, "government") or ""
@@ -111,6 +117,10 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
     edicts_block = extract_block(country_block, "edicts") or ""
     policy_flags_block = extract_block(country_block, "policy_flags")
     owned_leaders_block = extract_block(country_block, "owned_leaders")
+    pop_factions_block = extract_block(country_block, "standard_pop_factions_module")
+    is_gestalt = "ethic_gestalt_consciousness" in [
+        str(item) for item in find_all_scalars(ethos_block, "ethic")
+    ]
 
     return EmpireSummary(
         country_id=country_id,
@@ -131,8 +141,15 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
         edicts=[str(item) for item in find_all_scalars(edicts_block, "edict")],
         policy_flags=parse_quoted_list_block(policy_flags_block or ""),
         owned_leaders=parse_int_list_block(owned_leaders_block or ""),
+        pop_factions_applicable=False if is_gestalt else pop_factions_block is not None,
+        pop_faction_members=_as_optional_int(
+            find_scalar(pop_factions_block or "", "total_faction_members")
+        ),
+        pop_faction_members_power=_as_optional_float(
+            find_scalar(pop_factions_block or "", "total_faction_members_power")
+        ),
         owned_planets=parse_int_list_block(owned_planets_block or ""),
-        monthly_income=parse_resource_block(income_totals or ""),
+        monthly_income=monthly_income,
         fleet_size=_as_optional_float(find_scalar(country_block, "fleet_size")),
         used_naval_capacity=_as_optional_float(find_scalar(country_block, "used_naval_capacity")),
         empire_size=_as_optional_float(find_scalar(country_block, "empire_size")),

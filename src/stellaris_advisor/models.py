@@ -34,6 +34,9 @@ class EmpireSummary:
     edicts: list[str] = field(default_factory=list)
     policy_flags: list[str] = field(default_factory=list)
     owned_leaders: list[int] = field(default_factory=list)
+    pop_factions_applicable: bool | None = None
+    pop_faction_members: int | None = None
+    pop_faction_members_power: float | None = None
     owned_planets: list[int] = field(default_factory=list)
     monthly_income: dict[str, float] = field(default_factory=dict)
     fleet_size: float | None = None

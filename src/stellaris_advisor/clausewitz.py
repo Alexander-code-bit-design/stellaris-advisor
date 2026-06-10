@@ -143,6 +143,13 @@ def parse_resource_block(text: str) -> dict[str, float]:
     return resources
 
 
+def sum_nested_resource_blocks(text: str) -> dict[str, float]:
+    totals: dict[str, float] = {}
+    for key, value in re.findall(r"(?<![A-Za-z0-9_])([A-Za-z0-9_]+)\s*=\s*(-?\d+(?:\.\d+)?)", text):
+        totals[key] = totals.get(key, 0.0) + float(value)
+    return totals
+
+
 def parse_int_list_block(text: str) -> list[int]:
     return [int(item) for item in re.findall(r"-?\d+", text)]
 
