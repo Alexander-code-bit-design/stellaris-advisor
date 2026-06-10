@@ -8,8 +8,10 @@ from .clausewitz import (
     extract_block,
     extract_numbered_block,
     extract_top_level_block,
+    find_all_scalars,
     find_scalar,
     parse_int_list_block,
+    parse_quoted_list_block,
     parse_resource_block,
     parse_top_level_assignments,
 )
@@ -100,10 +102,35 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
     income_totals = extract_block(budget_block, "resources")
 
     owned_planets_block = extract_block(country_block, "owned_planets")
+    government_block = extract_block(country_block, "government") or ""
+    ethos_block = extract_block(country_block, "ethos") or ""
+    civics_block = extract_block(government_block, "civics")
+    tradition_categories_block = extract_block(country_block, "tradition_categories")
+    traditions_block = extract_block(country_block, "traditions")
+    ascension_perks_block = extract_block(country_block, "ascension_perks")
+    edicts_block = extract_block(country_block, "edicts") or ""
+    policy_flags_block = extract_block(country_block, "policy_flags")
+    owned_leaders_block = extract_block(country_block, "owned_leaders")
 
     return EmpireSummary(
         country_id=country_id,
         name=_extract_localized_name(country_block),
+        founder_species_id=_as_optional_int(find_scalar(country_block, "founder_species_ref")),
+        ethics=[str(item) for item in find_all_scalars(ethos_block, "ethic")],
+        government_type=_as_optional_str(find_scalar(government_block, "type")),
+        authority=_as_optional_str(find_scalar(government_block, "authority")),
+        civics=parse_quoted_list_block(civics_block or ""),
+        origin=_as_optional_str(find_scalar(government_block, "origin")),
+        council_agenda=_as_optional_str(find_scalar(government_block, "council_agenda")),
+        council_agenda_progress=_as_optional_float(
+            find_scalar(government_block, "council_agenda_progress")
+        ),
+        tradition_categories=parse_quoted_list_block(tradition_categories_block or ""),
+        traditions=parse_quoted_list_block(traditions_block or ""),
+        ascension_perks=parse_quoted_list_block(ascension_perks_block or ""),
+        edicts=[str(item) for item in find_all_scalars(edicts_block, "edict")],
+        policy_flags=parse_quoted_list_block(policy_flags_block or ""),
+        owned_leaders=parse_int_list_block(owned_leaders_block or ""),
         owned_planets=parse_int_list_block(owned_planets_block or ""),
         monthly_income=parse_resource_block(income_totals or ""),
         fleet_size=_as_optional_float(find_scalar(country_block, "fleet_size")),

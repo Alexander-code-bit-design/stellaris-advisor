@@ -20,6 +20,20 @@ class SaveMetadata:
 class EmpireSummary:
     country_id: int
     name: str | None = None
+    founder_species_id: int | None = None
+    ethics: list[str] = field(default_factory=list)
+    government_type: str | None = None
+    authority: str | None = None
+    civics: list[str] = field(default_factory=list)
+    origin: str | None = None
+    council_agenda: str | None = None
+    council_agenda_progress: float | None = None
+    tradition_categories: list[str] = field(default_factory=list)
+    traditions: list[str] = field(default_factory=list)
+    ascension_perks: list[str] = field(default_factory=list)
+    edicts: list[str] = field(default_factory=list)
+    policy_flags: list[str] = field(default_factory=list)
+    owned_leaders: list[int] = field(default_factory=list)
     owned_planets: list[int] = field(default_factory=list)
     monthly_income: dict[str, float] = field(default_factory=dict)
     fleet_size: float | None = None

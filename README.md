@@ -14,6 +14,7 @@ The MVP can already:
 - identify save name, game version, date, and player country;
 - locate the player empire's `country` block;
 - extract a first empire summary, including colonies, empire size, pops, military/economy score, victory rank, and monthly income;
+- extract first-pass empire identity fields, including ethics, civics, authority, government type, origin, traditions, ascension perks, edicts, policy flags, council agenda, and owned leader IDs;
 - generate a Chinese Markdown report with early findings.
 
 当前 MVP 已经能够：
@@ -23,6 +24,7 @@ The MVP can already:
 - 识别存档名、游戏版本、日期和玩家国家；
 - 定位玩家帝国的 `country` 数据块；
 - 提取初步帝国摘要，包括殖民地数量、帝国规模、人口、军事实力、经济实力、胜利排名和月收入；
+- 提取第一批帝国身份信息，包括思潮、国民理念、权力制度、政体、起源、传统、飞升、法令、政策标记、内阁议程和拥有的领袖 ID；
 - 生成中文 Markdown 局势报告和基础问题提示。
 
 ## Design Philosophy / 设计思路

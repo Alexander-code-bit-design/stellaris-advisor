@@ -147,6 +147,15 @@ def parse_int_list_block(text: str) -> list[int]:
     return [int(item) for item in re.findall(r"-?\d+", text)]
 
 
+def parse_quoted_list_block(text: str) -> list[str]:
+    return re.findall(r'"([^"]+)"', text)
+
+
+def find_all_scalars(text: str, key: str) -> list[Any]:
+    pattern = r"(?<![A-Za-z0-9_])" + re.escape(key) + r"\s*=\s*(\"[^\"]*\"|[^\s{}]+)"
+    return [parse_scalar(match.group(1)) for match in re.finditer(pattern, text)]
+
+
 def _skip_value(tokens: list[str], value_index: int) -> int:
     if value_index >= len(tokens) or tokens[value_index] != "{":
         return value_index + 1

@@ -20,6 +20,17 @@ def build_report(
         summary.extend(
             [
                 f"玩家帝国: {empire.name or '未知'}",
+                f"政体/权力: {_format_value(empire.government_type)} / {_format_value(empire.authority)}",
+                f"起源: {_format_value(empire.origin)}",
+                f"思潮: {_format_list(empire.ethics)}",
+                f"国民理念: {_format_list(empire.civics)}",
+                f"传统组: {_format_list(empire.tradition_categories)}",
+                f"已选传统数: {len(empire.traditions)}",
+                f"飞升: {_format_list(empire.ascension_perks)}",
+                f"当前议程: {_format_value(empire.council_agenda)} ({_format_number(empire.council_agenda_progress)})",
+                f"启用法令: {_format_list(empire.edicts)}",
+                f"政策标记: {_format_list(empire.policy_flags, limit=6)}",
+                f"领袖数量: {len(empire.owned_leaders)}",
                 f"殖民地数量: {len(empire.owned_planets)}",
                 f"帝国规模: {_format_number(empire.empire_size)}",
                 f"智慧人口: {_format_number(empire.sapient_pops)}",
@@ -77,10 +88,11 @@ def build_report(
         )
 
     next_steps = [
-        "实现玩家国家定位：从 player country ID 找到对应 country block。",
-        "提取月收入、资源库存、舰队容量、科研产出、传统和飞升槽。",
-        "建立按版本标记的 wiki/patch/community 知识库。",
-        "让 LLM 只基于结构化摘要和检索证据生成建议。",
+        "解析 owned_planets 对应的星球块，提取岗位、住房、稳定度、区划、建筑和建造队列。",
+        "解析恒星基地、舰队、舰船设计和补员队列，确认军事实力为零是否为真实局势或生物舰船字段差异。",
+        "解析领袖详情和内阁席位，把 owned_leaders ID 映射到姓名、等级、岗位和特质。",
+        "解析 galactic_object 和超空间航道，并在 player_visible 模式下做边境与 chokepoint 分析。",
+        "建立按版本标记的 wiki/patch/community 知识库，让 LLM 基于结构化摘要和检索证据生成建议。",
     ]
 
     return AdvisorReport(
@@ -147,6 +159,20 @@ def _format_number(value: object) -> str:
     return str(value)
 
 
+def _format_value(value: object) -> str:
+    if value is None or value == "":
+        return "未知"
+    return str(value)
+
+
+def _format_list(values: list[object], limit: int = 8) -> str:
+    if not values:
+        return "未知"
+    shown = [str(value) for value in values[:limit]]
+    suffix = f" (+{len(values) - limit})" if len(values) > limit else ""
+    return ", ".join(shown) + suffix
+
+
 def _format_resources(resources: dict[str, float]) -> str:
     preferred = [
         "energy",
@@ -168,6 +194,16 @@ def _format_resources(resources: dict[str, float]) -> str:
 
 def _build_empire_findings(empire: EmpireSummary) -> list[Finding]:
     findings: list[Finding] = []
+
+    if empire.origin is None or not empire.civics or not empire.ethics:
+        findings.append(
+            Finding(
+                title="帝国身份信息不完整",
+                severity="low",
+                detail="没有完整提取起源、国民理念或思潮。",
+                recommendation="继续扩展玩家 country block 解析，并为不同版本/政体添加兼容测试。",
+            )
+        )
 
     if (
         empire.military_power is not None
