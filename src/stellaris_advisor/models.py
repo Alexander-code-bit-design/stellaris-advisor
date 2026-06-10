@@ -15,10 +15,26 @@ class SaveMetadata:
 
 
 @dataclass(slots=True)
+class EmpireSummary:
+    country_id: int
+    name: str | None = None
+    owned_planets: list[int] = field(default_factory=list)
+    monthly_income: dict[str, float] = field(default_factory=dict)
+    fleet_size: float | None = None
+    used_naval_capacity: float | None = None
+    empire_size: float | None = None
+    sapient_pops: int | None = None
+    military_power: float | None = None
+    economy_power: float | None = None
+    victory_rank: int | None = None
+
+
+@dataclass(slots=True)
 class SaveGame:
     metadata: SaveMetadata
     gamestate_text: str
     gamestate: dict[str, Any] = field(default_factory=dict)
+    player_empire: EmpireSummary | None = None
 
 
 @dataclass(slots=True)
@@ -34,4 +50,3 @@ class AdvisorReport:
     summary: list[str]
     findings: list[Finding]
     next_steps: list[str]
-

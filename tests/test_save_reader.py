@@ -15,6 +15,8 @@ def test_read_save_metadata() -> None:
     assert save.metadata.date == "2230.01.01"
     assert save.metadata.player_country == 0
     assert save.metadata.ironman is False
+    assert save.player_empire is not None
+    assert save.player_empire.name == "United Nations of Earth"
 
 
 def test_build_report_renders_markdown() -> None:
@@ -25,4 +27,3 @@ def test_build_report_renders_markdown() -> None:
     assert "Stellaris Advisor Report" in markdown
     assert "游戏版本: 3.12.5" in markdown
     assert "下一步开发" in markdown
-

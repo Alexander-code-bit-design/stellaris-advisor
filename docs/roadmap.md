@@ -12,6 +12,7 @@
 - Locate the player `country` block.
 - Extract resources, monthly balance, empire size, research, unity, traditions, civics, ethics, authority, origin, and ascension perks.
 - Detect economic bottlenecks with simple thresholds.
+- Track existing parser/tool candidates in `docs/existing-tools.md` before adding dependencies.
 
 ## Phase 3: Planet and Fleet Analysis
 
@@ -47,4 +48,3 @@
 - Local web UI for upload and report review.
 - Optional GitHub Action for regression tests on fixture saves.
 - Optional desktop packaging.
-

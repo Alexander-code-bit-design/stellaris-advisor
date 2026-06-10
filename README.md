@@ -46,6 +46,7 @@ skills/
   stellaris.skill.md  Agent workflow for save analysis.
 docs/
   roadmap.md          Implementation plan.
+  existing-tools.md   GitHub survey of reusable parsers and MCP tools.
 tests/
   test_save_reader.py MVP tests.
 ```
@@ -56,4 +57,3 @@ tests/
 - Modded games can alter jobs, buildings, resources, ships, civics, traditions, and scripted values.
 - Community data is useful but noisy. Store source, version, date, and confidence for every retrieved note.
 - Do not put a whole `gamestate` directly into an LLM prompt. Parse and summarize first.
-
