@@ -10,6 +10,7 @@ Use this skill when a user asks for advice about a Stellaris campaign, provides 
 - Treat modded saves as lower confidence unless the mod data is available.
 - Separate facts, inferred risks, and recommendations.
 - For version-sensitive mechanics, retrieve version-tagged knowledge before answering.
+- Default to player-visible analysis. Do not reveal hidden AI empire data, undiscovered systems, or other information the player could not normally know.
 
 ## Workflow
 
@@ -23,7 +24,9 @@ Use this skill when a user asks for advice about a Stellaris campaign, provides 
    - Extract resource stockpiles and monthly income.
    - Extract planets, colonies, jobs, pops, housing, amenities, stability, crime, districts, buildings, and build queues.
    - Extract fleets, naval capacity, fleet power, ship designs, starbases, wars, claims, subjects, federation state, rivalries, and nearby threats.
-   - Extract research output, technology alternatives, traditions, ascension perks, edicts, council, leaders, and empire size.
+   - Extract research output, technology alternatives, traditions, ascension perks, edicts, council, leaders, factions, civics, ethics, government authority, origin, policies, relics, situations, and empire size.
+   - Extract galaxy map facts that are visible to the player: known systems, surveyed systems, hyperlanes, borders, chokepoints, gateways, wormholes, L-Gates, and starbase defenses.
+   - Filter all non-player data through the visibility policy before sending it to an LLM.
 
 3. Detect issues.
    - Economy: deficits, bottlenecks, low alloy output, low research, unstable consumer goods, weak unity.
@@ -31,6 +34,7 @@ Use this skill when a user asks for advice about a Stellaris campaign, provides 
    - Military: low fleet power, over/under naval cap, obsolete designs, exposed chokepoints.
    - Diplomacy: hostile neighbors, federation or subject opportunities, war exhaustion, claims risk.
    - Strategic timing: crisis year, mid-game threats, fallen empires, Khan, end-game crisis, victory pressure.
+   - Map strategy: exposed borders, chokepoints, disconnected territory, vulnerable gateways/wormholes, and starbase coverage.
 
 4. Retrieve knowledge.
    - Query knowledge sources with the detected game version.
@@ -81,4 +85,4 @@ Use this structure for full save analysis:
 - Do not help users cheat in multiplayer or bypass anti-cheat systems.
 - Save editing advice is allowed for single-player experimentation, but warn users to back up saves.
 - Do not claim certainty for mechanics not verified against the relevant version.
-
+- Do not disclose hidden save information in default player-visible mode. If the user explicitly asks for omniscient/spoiler analysis, label it clearly before proceeding.

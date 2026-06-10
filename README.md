@@ -111,6 +111,7 @@ docs/
   roadmap.md          Implementation plan / 实现路线图
   knowledge-design.md Knowledge/RAG design / 知识库与 RAG 设计
   existing-tools.md   Existing tool survey / 现有工具调研
+  visibility-policy.md Player-visibility rules / 玩家可见性规则
 tests/
   test_save_reader.py MVP tests / MVP 测试
 ```
@@ -135,3 +136,8 @@ See [docs/existing-tools.md](docs/existing-tools.md).
 
 可参考 [docs/existing-tools.md](docs/existing-tools.md)。
 
+## Player Visibility / 玩家可见性
+
+The default advisor mode must not leak hidden AI empire data, undiscovered systems, or other information unavailable to the player in normal gameplay. See [docs/visibility-policy.md](docs/visibility-policy.md).
+
+默认顾问模式不得泄露隐藏 AI 帝国数据、未发现星系或玩家正常游玩无法得知的信息。详见 [docs/visibility-policy.md](docs/visibility-policy.md)。

@@ -11,6 +11,7 @@
 
 - Locate the player `country` block.
 - Extract resources, monthly balance, empire size, research, unity, traditions, civics, ethics, authority, origin, and ascension perks.
+- Extract civics, ethics, government authority, origin, species traits, council, leaders, factions, edicts, relics, situations, agendas, traditions, ascension perks, diplomatic stance, policies, and subject/federation status.
 - Detect economic bottlenecks with simple thresholds.
 - Track existing parser/tool candidates in `docs/existing-tools.md` before adding dependencies.
 
@@ -18,9 +19,18 @@
 
 - Parse owned planets and colonies.
 - Extract pops, jobs, housing, amenities, stability, crime, designation, districts, buildings, blockers, and queues.
-- Parse fleets, naval cap, command limit, fleet power, starbases, ship designs, and upgrade status.
+- Parse fleets, naval cap, command limit, fleet power, armies, ship designs, components, upgrade status, and reinforcement queues.
+- Parse starbases, modules, buildings, defense platforms, shipyards, anchorages, trade hubs, chokepoint defenses, and border fortifications.
 
-## Phase 4: Knowledge Retrieval
+## Phase 4: Galaxy Map and Visibility
+
+- Parse `galactic_object` as a graph of systems and hyperlanes.
+- Extract coordinates, ownership, claims, surveyed status, starbases, bypasses, gateways, wormholes, L-Gates, borders, and known hostile routes.
+- Detect chokepoints, exposed borders, disconnected territory, important bypasses, and shortest paths from threats to core worlds.
+- Implement player-visibility filtering before any AI-facing summary is generated.
+- Follow `docs/visibility-policy.md` so the advisor does not leak hidden AI empire information by default.
+
+## Phase 5: Knowledge Retrieval
 
 - Build a local knowledge store with source metadata:
   - source type: wiki, patch notes, forum, Reddit, guide
@@ -31,7 +41,7 @@
 - Prefer official mechanics sources.
 - Use community sources only as strategy evidence.
 
-## Phase 5: AI Advisor
+## Phase 6: AI Advisor
 
 - Implement tool-calling flow:
   - `read_save`
@@ -42,7 +52,7 @@
 - Add Chinese-first report templates.
 - Add follow-up Q&A over the parsed campaign state.
 
-## Phase 6: Product Surface
+## Phase 7: Product Surface
 
 - CLI for power users.
 - Local web UI for upload and report review.
