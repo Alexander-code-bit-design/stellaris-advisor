@@ -2,6 +2,7 @@ from pathlib import Path
 
 from stellaris_advisor.analyzer import build_report, render_markdown
 from stellaris_advisor.save_reader import read_save
+from stellaris_advisor.visibility import VisibilityMode
 
 
 FIXTURE = Path(__file__).parent.parent / "examples" / "sample_meta_only.sav"
@@ -25,5 +26,7 @@ def test_build_report_renders_markdown() -> None:
     markdown = render_markdown(report)
 
     assert "Stellaris Advisor Report" in markdown
+    assert report.visibility_mode is VisibilityMode.PLAYER_VISIBLE
+    assert "可见性模式: `player_visible`" in markdown
     assert "游戏版本: 3.12.5" in markdown
     assert "下一步开发" in markdown

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from .models import AdvisorReport, EmpireSummary, Finding, SaveGame
+from .visibility import VisibilityMode
 
 
-def build_report(save: SaveGame) -> AdvisorReport:
+def build_report(
+    save: SaveGame, visibility_mode: VisibilityMode = VisibilityMode.PLAYER_VISIBLE
+) -> AdvisorReport:
     meta = save.metadata
     empire = save.player_empire
     summary = [
@@ -80,11 +83,36 @@ def build_report(save: SaveGame) -> AdvisorReport:
         "让 LLM 只基于结构化摘要和检索证据生成建议。",
     ]
 
-    return AdvisorReport(summary=summary, findings=findings, next_steps=next_steps)
+    return AdvisorReport(
+        visibility_mode=visibility_mode,
+        summary=summary,
+        findings=findings,
+        next_steps=next_steps,
+    )
 
 
 def render_markdown(report: AdvisorReport) -> str:
-    lines = ["# Stellaris Advisor Report", "", "## 局势摘要"]
+    lines = [
+        "# Stellaris Advisor Report",
+        "",
+        f"可见性模式: `{report.visibility_mode.value}`",
+        "",
+        "## 局势摘要",
+    ]
+    if report.visibility_mode is VisibilityMode.PLAYER_VISIBLE:
+        lines.extend(
+            [
+                "",
+                "> 默认仅基于玩家可见信息生成建议；隐藏 AI 情报、未发现星系和剧透信息不得进入报告。",
+            ]
+        )
+    elif report.visibility_mode is VisibilityMode.OMNISCIENT:
+        lines.extend(
+            [
+                "",
+                "> 警告：当前为全知/剧透模式，后续版本可能显示正常游玩不可见的信息。",
+            ]
+        )
     lines.extend(f"- {item}" for item in report.summary)
     lines.extend(["", "## 发现的问题"])
     if report.findings:

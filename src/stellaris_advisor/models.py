@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from .visibility import VisibilityMode
+
 
 @dataclass(slots=True)
 class SaveMetadata:
@@ -47,6 +49,7 @@ class Finding:
 
 @dataclass(slots=True)
 class AdvisorReport:
+    visibility_mode: VisibilityMode
     summary: list[str]
     findings: list[Finding]
     next_steps: list[str]

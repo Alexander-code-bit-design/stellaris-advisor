@@ -70,6 +70,19 @@ Analyze a real save:
 python -m stellaris_advisor "C:\Users\<you>\Documents\Paradox Interactive\Stellaris\save games\<folder>\<save>.sav"
 ```
 
+Choose an explicit visibility mode:
+
+选择明确的可见性模式：
+
+```powershell
+python -m stellaris_advisor --visibility-mode player_visible "C:\path\to\save.sav"
+python -m stellaris_advisor --visibility-mode omniscient "C:\path\to\save.sav"
+```
+
+`player_visible` is the default and must not leak hidden AI empire data or undiscovered map information. `omniscient` is reserved for explicit spoiler/debug analysis.
+
+`player_visible` 是默认模式，不应泄露隐藏 AI 帝国数据或未发现地图信息。`omniscient` 仅用于明确的剧透/调试分析。
+
 ## MVP Goals / MVP 目标
 
 1. Read `.sav` files and extract `meta` plus selected `gamestate` signals.
