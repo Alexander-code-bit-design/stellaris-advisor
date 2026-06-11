@@ -84,6 +84,28 @@ class StarbaseSummary:
 
 
 @dataclass(slots=True)
+class ShipSummary:
+    ship_id: int
+    name: str | None = None
+    design_id: int | None = None
+    fleet_id: int | None = None
+    hit_points: float | None = None
+    military_power: float | None = None
+
+
+@dataclass(slots=True)
+class FleetSummary:
+    fleet_id: int
+    name: str | None = None
+    ship_class: str | None = None
+    station: bool | None = None
+    military_power: float | None = None
+    system_id: int | None = None
+    ship_ids: list[int] = field(default_factory=list)
+    ships: list[ShipSummary] = field(default_factory=list)
+
+
+@dataclass(slots=True)
 class MegastructureSummary:
     megastructure_id: int
     name: str | None = None
@@ -131,6 +153,7 @@ class EmpireSummary:
     owned_planets: list[int] = field(default_factory=list)
     planets: list[PlanetSummary] = field(default_factory=list)
     owned_fleets: list[int] = field(default_factory=list)
+    fleets: list[FleetSummary] = field(default_factory=list)
     starbase_capacity: int | None = None
     starbases: list[StarbaseSummary] = field(default_factory=list)
     megastructures: list[MegastructureSummary] = field(default_factory=list)

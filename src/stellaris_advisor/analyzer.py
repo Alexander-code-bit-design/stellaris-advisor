@@ -46,6 +46,7 @@ def build_report(
                 f"星球概览: {_format_planets(empire)}",
                 f"恒星基地: {len(empire.starbases)} / {_format_number(empire.starbase_capacity)}",
                 f"恒星基地概览: {_format_starbases(empire, detail_level)}",
+                f"舰队实例: {_format_fleet_counts(empire)}",
                 f"巨型结构: {_format_megastructures(empire)}",
                 f"舰船设计: {_format_ship_designs(empire, detail_level)}",
                 f"已研究科技: {_format_technologies(empire)}",
@@ -163,6 +164,7 @@ def _build_english_report(
                 f"Planet overview: {_format_planets(empire)}",
                 f"Starbases: {len(empire.starbases)} / {_format_number(empire.starbase_capacity)}",
                 f"Starbase overview: {_format_starbases(empire, detail_level)}",
+                f"Fleet instances: {_format_fleet_counts_en(empire)}",
                 f"Megastructures: {_format_megastructures_en(empire)}",
                 f"Ship designs: {_format_ship_designs(empire, detail_level)}",
                 f"Researched technologies: {_format_technologies_en(empire)}",
@@ -509,6 +511,7 @@ def _format_ship_designs(
 def _format_full_detail_lines(empire: EmpireSummary) -> list[str]:
     return [
         f"领袖细节: {_format_leader_details(empire)}",
+        f"舰队实例细节: {_format_fleet_details(empire)}",
         f"恒星基地细节: {_format_starbase_details(empire)}",
         f"星球建筑/区划细节: {_format_planet_details(empire)}",
         f"舰船设计细节: {_format_ship_design_details(empire)}",
@@ -518,6 +521,7 @@ def _format_full_detail_lines(empire: EmpireSummary) -> list[str]:
 def _format_full_detail_lines_en(empire: EmpireSummary) -> list[str]:
     return [
         f"Leader details: {_format_leader_details(empire)}",
+        f"Fleet instance details: {_format_fleet_details(empire)}",
         f"Starbase details: {_format_starbase_details(empire)}",
         f"Planet building/district details: {_format_planet_details(empire)}",
         f"Ship design details: {_format_ship_design_details(empire)}",
@@ -538,6 +542,57 @@ def _format_leader_details(empire: EmpireSummary, limit: int = 20) -> str:
             f"L{_format_number(leader.level)}, traits {traits}, location {location}"
         )
     suffix = f" (+{len(empire.leaders) - limit})" if len(empire.leaders) > limit else ""
+    return " | ".join(parts) + suffix
+
+
+def _format_fleet_counts(empire: EmpireSummary) -> str:
+    if not empire.fleets:
+        return "尚未解析"
+    station_count = sum(1 for fleet in empire.fleets if fleet.station)
+    mobile_count = len(empire.fleets) - station_count
+    mobile_military_count = sum(
+        1
+        for fleet in empire.fleets
+        if not fleet.station and (fleet.military_power or 0) > 0
+    )
+    return (
+        f"总计 {len(empire.fleets)}，机动 {mobile_count}，"
+        f"机动战斗 {mobile_military_count}，空间站/基地 {station_count}"
+    )
+
+
+def _format_fleet_counts_en(empire: EmpireSummary) -> str:
+    if not empire.fleets:
+        return "not parsed"
+    station_count = sum(1 for fleet in empire.fleets if fleet.station)
+    mobile_count = len(empire.fleets) - station_count
+    mobile_military_count = sum(
+        1
+        for fleet in empire.fleets
+        if not fleet.station and (fleet.military_power or 0) > 0
+    )
+    return (
+        f"total {len(empire.fleets)}, mobile {mobile_count}, "
+        f"mobile military {mobile_military_count}, stations/bases {station_count}"
+    )
+
+
+def _format_fleet_details(empire: EmpireSummary, limit: int = 40) -> str:
+    if not empire.fleets:
+        return "not parsed"
+    parts = []
+    for fleet in empire.fleets[:limit]:
+        kind = "station/base" if fleet.station else "mobile"
+        ships = ", ".join(
+            f"{ship.ship_id}:design {ship.design_id}" for ship in fleet.ships
+        ) or "none"
+        system = f", system {fleet.system_id}" if fleet.system_id is not None else ""
+        parts.append(
+            f"{fleet.fleet_id} {_format_name(fleet.name) or 'unnamed'}: "
+            f"{compact_name(fleet.ship_class) if fleet.ship_class else 'unknown'}, "
+            f"{kind}, power {_format_number(fleet.military_power)}{system}, ships {ships}"
+        )
+    suffix = f" (+{len(empire.fleets) - limit})" if len(empire.fleets) > limit else ""
     return " | ".join(parts) + suffix
 
 

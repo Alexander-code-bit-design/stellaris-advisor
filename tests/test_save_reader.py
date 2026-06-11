@@ -224,7 +224,7 @@ starbase_mgr=
 }
 ships=
 {
-    50={ fleet=100 }
+    50={ fleet=100 design=200 hit_points=1000 military_power=123.5 }
     51={ fleet=999 }
 }
 fleet=
@@ -232,7 +232,9 @@ fleet=
     100=
     {
         name={ key="shipclass_starbase_name" }
+        ships={ 50 }
         ship_class=shipclass_starbase
+        station=yes
         military_power=123.5
     }
     999=
@@ -367,6 +369,15 @@ leaders=
     assert empire.pop_factions_applicable is False
     assert empire.pop_faction_members == 0
     assert empire.owned_fleets == [100, 101]
+    assert len(empire.fleets) == 1
+    assert empire.fleets[0].fleet_id == 100
+    assert empire.fleets[0].ship_class == "shipclass_starbase"
+    assert empire.fleets[0].station is True
+    assert empire.fleets[0].military_power == 123.5
+    assert empire.fleets[0].ship_ids == [50]
+    assert empire.fleets[0].ships[0].ship_id == 50
+    assert empire.fleets[0].ships[0].design_id == 200
+    assert empire.fleets[0].ships[0].hit_points == 1000
     assert empire.starbase_capacity == 5
     assert len(empire.starbases) == 1
     assert empire.starbases[0].starbase_id == 5

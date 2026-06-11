@@ -21,11 +21,13 @@ from .clausewitz import (
 )
 from .models import (
     EmpireSummary,
+    FleetSummary,
     LeaderSummary,
     MegastructureSummary,
     PlanetSummary,
     SaveGame,
     SaveMetadata,
+    ShipSummary,
     ShipDesignSummary,
     StarbaseSummary,
 )
@@ -171,6 +173,7 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
         owned_planets=owned_planets,
         planets=_extract_planets(gamestate_text, owned_planets),
         owned_fleets=owned_fleets,
+        fleets=_extract_fleets(gamestate_text, owned_fleets),
         starbase_capacity=_as_optional_int(find_scalar(country_block, "starbase_capacity")),
         starbases=_extract_starbases(gamestate_text, owned_fleets),
         megastructures=_extract_megastructures(gamestate_text, country_id),
@@ -185,6 +188,56 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
         military_power=_as_optional_float(find_scalar(country_block, "military_power")),
         economy_power=_as_optional_float(find_scalar(country_block, "economy_power")),
         victory_rank=_as_optional_int(find_scalar(country_block, "victory_rank")),
+    )
+
+
+def _extract_fleets(gamestate_text: str, owned_fleets: list[int]) -> list[FleetSummary]:
+    fleets_block = extract_top_level_block(gamestate_text, "fleet") or ""
+    ships_block = extract_top_level_block(gamestate_text, "ships") or ""
+    summaries: list[FleetSummary] = []
+    for fleet_id in owned_fleets:
+        fleet_block = extract_numbered_block(fleets_block, fleet_id)
+        if not fleet_block:
+            continue
+        ship_ids = parse_int_list_block(extract_block(fleet_block, "ships") or "")
+        ships = _extract_ship_summaries(ships_block, ship_ids)
+        movement_manager_block = extract_block(fleet_block, "movement_manager") or ""
+        coordinate_block = extract_block(movement_manager_block, "coordinate") or ""
+        summaries.append(
+            FleetSummary(
+                fleet_id=fleet_id,
+                name=_extract_localized_name(fleet_block),
+                ship_class=_as_optional_str(find_scalar(fleet_block, "ship_class")),
+                station=_as_optional_bool(find_scalar(fleet_block, "station")),
+                military_power=_as_optional_float(find_scalar(fleet_block, "military_power")),
+                system_id=_as_optional_int(find_scalar(coordinate_block, "origin")),
+                ship_ids=ship_ids,
+                ships=ships,
+            )
+        )
+    return summaries
+
+
+def _extract_ship_summaries(ships_block: str, ship_ids: list[int]) -> list[ShipSummary]:
+    ships: list[ShipSummary] = []
+    for ship_id in ship_ids:
+        ship = _extract_ship_summary(ships_block, ship_id)
+        if ship is not None:
+            ships.append(ship)
+    return ships
+
+
+def _extract_ship_summary(ships_block: str, ship_id: int) -> ShipSummary | None:
+    ship_block = extract_numbered_block(ships_block, ship_id)
+    if not ship_block:
+        return None
+    return ShipSummary(
+        ship_id=ship_id,
+        name=_extract_localized_name(ship_block),
+        design_id=_as_optional_int(find_scalar(ship_block, "design")),
+        fleet_id=_as_optional_int(find_scalar(ship_block, "fleet")),
+        hit_points=_as_optional_float(find_scalar(ship_block, "hit_points")),
+        military_power=_as_optional_float(find_scalar(ship_block, "military_power")),
     )
 
 
