@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import re
 
+from .localization import LocalizationCatalog
+
 
 PREFIXES = {
     "tech": "Technology",
@@ -31,21 +33,37 @@ TOKEN_REPLACEMENTS = {
     "sct": "Standard Construction Templates",
 }
 
+_ACTIVE_CATALOG: LocalizationCatalog | None = None
 
-def display_name(identifier: object, include_raw: bool = True) -> str:
+
+def set_localization_catalog(catalog: LocalizationCatalog | None) -> None:
+    global _ACTIVE_CATALOG
+    _ACTIVE_CATALOG = catalog
+
+
+def display_name(
+    identifier: object,
+    include_raw: bool = True,
+    catalog: LocalizationCatalog | None = None,
+) -> str:
     raw = str(identifier)
     cleaned = raw.strip().strip('"')
     if not cleaned:
         return cleaned
 
-    label = _format_identifier(cleaned)
+    selected_catalog = catalog if catalog is not None else _ACTIVE_CATALOG
+    label = selected_catalog.lookup(cleaned) if selected_catalog is not None else None
+    if not label:
+        label = _format_identifier(cleaned)
     if include_raw and label != cleaned:
         return f"{label} [{cleaned}]"
     return label
 
 
-def compact_name(identifier: object) -> str:
-    label = display_name(identifier, include_raw=False)
+def compact_name(
+    identifier: object, catalog: LocalizationCatalog | None = None
+) -> str:
+    label = display_name(identifier, include_raw=False, catalog=catalog)
     for prefix in ["Planet Class: "]:
         if label.startswith(prefix):
             return label[len(prefix) :]

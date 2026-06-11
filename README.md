@@ -118,6 +118,19 @@ python -m stellaris_advisor --language zh "C:\path\to\save.sav"
 python -m stellaris_advisor --language en "C:\path\to\save.sav"
 ```
 
+Use official game localization when available:
+
+可选：使用游戏官方本地化文件渲染术语：
+
+```powershell
+python -m stellaris_advisor --language zh --localization-dir "C:\Program Files (x86)\Steam\steamapps\common\Stellaris" "C:\path\to\save.sav"
+python -m stellaris_advisor --language en --localization-dir "C:\Program Files (x86)\Steam\steamapps\common\Stellaris" "C:\path\to\save.sav"
+```
+
+You can also set `STELLARIS_ADVISOR_LOCALIZATION_DIR` instead of passing `--localization-dir` every time.
+
+也可以设置 `STELLARIS_ADVISOR_LOCALIZATION_DIR`，避免每次命令都传 `--localization-dir`。
+
 Choose report detail level:
 
 选择报告详细程度：

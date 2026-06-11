@@ -11,12 +11,14 @@ from .advice import (
 )
 from .analyzer import build_report, render_markdown
 from .detail_level import DetailLevel
+from .display_names import set_localization_catalog
 from .knowledge import (
     KnowledgeLoadError,
     build_knowledge_query,
     load_knowledge_records,
     retrieve_knowledge,
 )
+from .localization import LocalizationLoadError, load_localization_catalog
 from .report_language import ReportLanguage
 from .save_reader import SaveReadError, read_save
 from .visibility import VisibilityMode
@@ -90,6 +92,14 @@ def main(argv: list[str] | None = None) -> int:
         default=0,
         help="Number of local knowledge records to retrieve into --advice prompts. Defaults to 0.",
     )
+    parser.add_argument(
+        "--localization-dir",
+        default=None,
+        help=(
+            "Stellaris installation, localisation directory, or localization .yml file. "
+            "May also use STELLARIS_ADVISOR_LOCALIZATION_DIR."
+        ),
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -98,10 +108,21 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
+    language = ReportLanguage(args.language)
+    localization_dir = args.localization_dir or _env("STELLARIS_ADVISOR_LOCALIZATION_DIR")
+    if localization_dir:
+        try:
+            set_localization_catalog(load_localization_catalog(localization_dir, language))
+        except LocalizationLoadError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+    else:
+        set_localization_catalog(None)
+
     report = build_report(
         save,
         VisibilityMode(args.visibility_mode),
-        ReportLanguage(args.language),
+        language,
         DetailLevel(args.detail_level),
     )
     if not args.advice:
