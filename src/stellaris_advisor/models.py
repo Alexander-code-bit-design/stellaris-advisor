@@ -35,6 +35,23 @@ class LeaderSummary:
 
 
 @dataclass(slots=True)
+class DistrictSummary:
+    district_id: int
+    district_type: str | None = None
+    level: int | None = None
+    zones: list[int] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class BuildingSummary:
+    building_id: int
+    building_type: str | None = None
+    position: int | None = None
+    ruined: bool | None = None
+    disabled: bool | None = None
+
+
+@dataclass(slots=True)
 class PlanetSummary:
     planet_id: int
     name: str | None = None
@@ -47,10 +64,16 @@ class PlanetSummary:
     final_designation: str | None = None
     ascension_tier: int | None = None
     districts: list[int] = field(default_factory=list)
+    district_details: list[DistrictSummary] = field(default_factory=list)
     buildings: list[int] = field(default_factory=list)
+    building_details: list[BuildingSummary] = field(default_factory=list)
     deposits: list[int] = field(default_factory=list)
     pop_groups: list[int] = field(default_factory=list)
     pop_jobs: list[int] = field(default_factory=list)
+    build_queue_id: int | None = None
+    army_build_queue_id: int | None = None
+    last_building_changed: str | None = None
+    last_district_changed: str | None = None
     num_sapient_pops: float | None = None
     stability: float | None = None
     crime: float | None = None

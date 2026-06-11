@@ -167,6 +167,10 @@ planets=
         designation="col_capital"
         final_designation="col_capital"
         ascension_tier=1
+        build_queue=60
+        army_build_queue=61
+        last_building_changed="building_research_lab_1"
+        last_district_changed="district_city"
         upkeep={ energy=2 }
         produces={ minerals=10 }
         profits={ minerals=8 }
@@ -186,6 +190,41 @@ planets=
         free_housing=-1
         free_amenities=-2
         num_sapient_pops=10
+    }
+}
+districts=
+{
+    1=
+    {
+        type="district_city"
+        level=2
+        zones={ 10 11 4294967295 }
+    }
+    2=
+    {
+        type="district_generator"
+        level=1
+        zones={ 12 }
+    }
+    3=
+    {
+        type="district_mining"
+        level=1
+        zones={ 13 }
+    }
+}
+buildings=
+{
+    4=
+    {
+        type="building_research_lab_1"
+        position=0
+    }
+    5=
+    {
+        type="building_foundry_1"
+        position=1
+        disabled=no
     }
 }
 galactic_object=
@@ -413,7 +452,19 @@ leaders=
     assert empire.planets[0].planet_class == "pc_continental"
     assert empire.planets[0].planet_size == 20
     assert empire.planets[0].districts == [1, 2, 3]
+    assert len(empire.planets[0].district_details) == 3
+    assert empire.planets[0].district_details[0].district_type == "district_city"
+    assert empire.planets[0].district_details[0].level == 2
+    assert empire.planets[0].district_details[0].zones == [10, 11]
     assert empire.planets[0].buildings == [4, 5]
+    assert len(empire.planets[0].building_details) == 2
+    assert empire.planets[0].building_details[0].building_type == "building_research_lab_1"
+    assert empire.planets[0].building_details[0].position == 0
+    assert empire.planets[0].building_details[1].disabled is False
+    assert empire.planets[0].build_queue_id == 60
+    assert empire.planets[0].army_build_queue_id == 61
+    assert empire.planets[0].last_building_changed == "building_research_lab_1"
+    assert empire.planets[0].last_district_changed == "district_city"
     assert empire.planets[0].num_sapient_pops == 52
     assert empire.planets[0].stability == 70
     assert empire.planets[0].free_housing == 5

@@ -41,6 +41,8 @@ The assistant should use detailed facts internally when relevant, but should avo
 
 Owned fleet objects should be parsed as facts before any strategic interpretation. Stellaris stores starbases, mining stations, research stations, construction ships, science ships, transports, and combat fleets in related fleet/ship structures. The parser should distinguish mobile combat fleets from station/base objects instead of treating `owned_fleets` as a pure military count.
 
+Planet districts and buildings should also be resolved through their instance tables. Planet-local ID lists are not enough; the parser should preserve district type, district level, building type, building position, and construction queue IDs when present.
+
 ## Wiki verification
 
 Wiki data is evidence, not the canonical parser contract. The current public English Stellaris Wiki technology pages are useful for validating player-facing names and mechanics, but may lag behind the current game version. Chinese wiki availability and naming consistency can vary.

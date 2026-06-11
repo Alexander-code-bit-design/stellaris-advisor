@@ -617,11 +617,25 @@ def _format_planet_details(empire: EmpireSummary, limit: int = 20) -> str:
         return "not parsed"
     parts = []
     for planet in empire.planets[:limit]:
-        districts = ", ".join(str(item) for item in planet.districts) or "none"
-        buildings = ", ".join(str(item) for item in planet.buildings) or "none"
+        districts = ", ".join(
+            f"{district.district_id}:{compact_name(district.district_type) if district.district_type else 'unknown'}"
+            f" L{_format_number(district.level)}"
+            for district in planet.district_details
+        ) or ", ".join(str(item) for item in planet.districts) or "none"
+        buildings = ", ".join(
+            f"{building.building_id}:{compact_name(building.building_type) if building.building_type else 'unknown'}"
+            f" pos {_format_number(building.position)}"
+            for building in planet.building_details
+        ) or ", ".join(str(item) for item in planet.buildings) or "none"
+        queues = (
+            f"; build queue {planet.build_queue_id}, army queue {planet.army_build_queue_id}"
+            if planet.build_queue_id is not None or planet.army_build_queue_id is not None
+            else ""
+        )
         parts.append(
             f"{_format_name(planet.name) or planet.planet_id}: districts {districts}; "
             f"buildings {buildings}; designation {compact_name(planet.designation) if planet.designation else 'unknown'}"
+            f"{queues}"
         )
     suffix = f" (+{len(empire.planets) - limit})" if len(empire.planets) > limit else ""
     return " | ".join(parts) + suffix

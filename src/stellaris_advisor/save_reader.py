@@ -20,6 +20,8 @@ from .clausewitz import (
     sum_nested_resource_blocks,
 )
 from .models import (
+    BuildingSummary,
+    DistrictSummary,
     EmpireSummary,
     FleetSummary,
     LeaderSummary,
@@ -390,6 +392,8 @@ def _extract_planets(gamestate_text: str, planet_ids: list[int]) -> list[PlanetS
     if planets_block is None:
         return []
 
+    districts_table = extract_top_level_block(gamestate_text, "districts") or ""
+    buildings_table = extract_top_level_block(gamestate_text, "buildings") or ""
     planets: list[PlanetSummary] = []
     for planet_id in planet_ids:
         planet_block = extract_numbered_block(planets_block, planet_id)
@@ -403,6 +407,8 @@ def _extract_planets(gamestate_text: str, planet_ids: list[int]) -> list[PlanetS
         upkeep_block = extract_block(planet_block, "upkeep")
         produces_block = extract_block(planet_block, "produces")
         profits_block = extract_block(planet_block, "profits")
+        district_ids = parse_int_list_block(districts_block or "")
+        building_ids = parse_int_list_block(buildings_block or "")
         planets.append(
             PlanetSummary(
                 planet_id=planet_id,
@@ -415,11 +421,17 @@ def _extract_planets(gamestate_text: str, planet_ids: list[int]) -> list[PlanetS
                 designation=_as_optional_str(find_scalar(planet_block, "designation")),
                 final_designation=_as_optional_str(find_scalar(planet_block, "final_designation")),
                 ascension_tier=_as_optional_int(find_scalar(planet_block, "ascension_tier")),
-                districts=parse_int_list_block(districts_block or ""),
-                buildings=parse_int_list_block(buildings_block or ""),
+                districts=district_ids,
+                district_details=_extract_district_details(districts_table, district_ids),
+                buildings=building_ids,
+                building_details=_extract_building_details(buildings_table, building_ids),
                 deposits=parse_int_list_block(deposits_block or ""),
                 pop_groups=parse_int_list_block(pop_groups_block or ""),
                 pop_jobs=parse_int_list_block(pop_jobs_block or ""),
+                build_queue_id=_as_optional_int(find_scalar(planet_block, "build_queue")),
+                army_build_queue_id=_as_optional_int(find_scalar(planet_block, "army_build_queue")),
+                last_building_changed=_as_optional_str(find_scalar(planet_block, "last_building_changed")),
+                last_district_changed=_as_optional_str(find_scalar(planet_block, "last_district_changed")),
                 num_sapient_pops=_as_optional_float(find_scalar(planet_block, "num_sapient_pops")),
                 stability=_as_optional_float(find_scalar(planet_block, "stability")),
                 crime=_as_optional_float(find_scalar(planet_block, "crime")),
@@ -435,6 +447,50 @@ def _extract_planets(gamestate_text: str, planet_ids: list[int]) -> list[PlanetS
             )
         )
     return planets
+
+
+def _extract_district_details(
+    districts_table: str, district_ids: list[int]
+) -> list[DistrictSummary]:
+    details: list[DistrictSummary] = []
+    for district_id in district_ids:
+        district_block = extract_numbered_block(districts_table, district_id)
+        if not district_block:
+            continue
+        zones_block = extract_block(district_block, "zones")
+        details.append(
+            DistrictSummary(
+                district_id=district_id,
+                district_type=_as_optional_str(find_scalar(district_block, "type")),
+                level=_as_optional_int(find_scalar(district_block, "level")),
+                zones=[
+                    zone_id
+                    for zone_id in parse_int_list_block(zones_block or "")
+                    if zone_id != 4294967295
+                ],
+            )
+        )
+    return details
+
+
+def _extract_building_details(
+    buildings_table: str, building_ids: list[int]
+) -> list[BuildingSummary]:
+    details: list[BuildingSummary] = []
+    for building_id in building_ids:
+        building_block = extract_numbered_block(buildings_table, building_id)
+        if not building_block:
+            continue
+        details.append(
+            BuildingSummary(
+                building_id=building_id,
+                building_type=_as_optional_str(find_scalar(building_block, "type")),
+                position=_as_optional_int(find_scalar(building_block, "position")),
+                ruined=_as_optional_bool(find_scalar(building_block, "ruined")),
+                disabled=_as_optional_bool(find_scalar(building_block, "disabled")),
+            )
+        )
+    return details
 
 
 def _extract_leaders(gamestate_text: str, leader_ids: list[int]) -> list[LeaderSummary]:
