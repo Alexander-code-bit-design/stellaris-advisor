@@ -19,6 +19,7 @@ The MVP can already:
 - extract player-visible diplomatic relations and first-contact progress, including communications, hostile/border flags, opinion values, trust, threat, and active first contacts;
 - extract first-pass player-visible known systems and hyperlanes from `galactic_object`, including owned starbase systems, colony systems, first-contact locations, bypasses, and frontier hyperlane candidates;
 - compute first-pass visible jump distances from active first-contact/border sources to the nearest colony, starbase, upgraded starbase, and shipyard;
+- extract player-visible hostile intel entries, including hostile target names, owners, system locations, military power, and their visible jump distances to player assets;
 - fall back to summing current-month income entries when a save lacks a precomputed monthly resource summary;
 - map owned leader IDs to first-pass leader details, including name localization keys, class, level, age, job, ethic, traits, location, and council position;
 - map owned planet IDs to first-pass planet details, including planet class, size, pops, stability, crime/deviancy, amenities, housing, designation, districts, building cache IDs, production, upkeep, and net output;
@@ -41,6 +42,7 @@ The MVP can already:
 - 提取玩家可见的外交关系和首次接触进度，包括是否已通信、敌对/接壤标记、关系值、信任、威胁和进行中的首次接触；
 - 从 `galactic_object` 提取第一版玩家可见星系和超空间航道，包括拥有星港的星系、殖民地星系、首次接触位置、旁路和外缘航道候选；
 - 计算第一版可见跳数：从进行中的首次接触/边境来源到最近殖民地、星港、升级星港和船坞的距离；
+- 提取玩家可见的敌对情报条目，包括敌对目标名称、所有者、所在星系、军事实力，以及它们到玩家资产的可见跳数；
 - 当存档没有预先汇总的月收入时，回退为累加当月收入分项；
 - 将拥有的领袖 ID 映射到第一批领袖详情，包括姓名本地化 key、职业、等级、年龄、岗位、思潮、特质、位置和内阁席位；
 - 将拥有的星球 ID 映射到第一批星球详情，包括星球类型、大小、人口、稳定度、犯罪/偏差、舒适度、住房、定位、区划、建筑缓存 ID、产出、维护和净产出；

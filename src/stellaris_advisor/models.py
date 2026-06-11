@@ -214,10 +214,20 @@ class SystemSummary:
 
 
 @dataclass(slots=True)
+class VisibleThreatSummary:
+    threat_id: int
+    system_id: int | None = None
+    name: str | None = None
+    owner: int | None = None
+    military_power: float | None = None
+
+
+@dataclass(slots=True)
 class StrategicPathSummary:
     source_kind: str
     source_id: int
     source_system_id: int
+    source_name: str | None = None
     source_system_name: str | None = None
     nearest_colony_system_id: int | None = None
     nearest_colony_system_name: str | None = None
@@ -267,6 +277,7 @@ class EmpireSummary:
     diplomatic_relations: list[DiplomaticRelationSummary] = field(default_factory=list)
     first_contacts: list[FirstContactSummary] = field(default_factory=list)
     known_systems: list[SystemSummary] = field(default_factory=list)
+    visible_threats: list[VisibleThreatSummary] = field(default_factory=list)
     strategic_paths: list[StrategicPathSummary] = field(default_factory=list)
     technologies: dict[str, int] = field(default_factory=dict)
     monthly_income: dict[str, float] = field(default_factory=dict)

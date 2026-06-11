@@ -148,6 +148,21 @@ country=
                 relation_current=10
             }
         }
+        intel=
+        {
+            {
+                object=88
+                hostile=
+                {
+                    {
+                        name={ key="Test Menace" literal=yes }
+                        coordinate={ origin=88 }
+                        military_power=456.5
+                        owner=43
+                    }
+                }
+            }
+        }
         standard_pop_factions_module=
         {
             total_faction_members_power=0
@@ -499,7 +514,11 @@ leaders=
     assert empire.known_systems[0].bypass_ids == [1]
     assert [lane.to_system_id for lane in empire.known_systems[0].hyperlanes] == [88, 99]
     assert empire.known_systems[0].hyperlanes[1].bridge is True
-    assert len(empire.strategic_paths) == 1
+    assert len(empire.visible_threats) == 1
+    assert empire.visible_threats[0].name == "Test Menace"
+    assert empire.visible_threats[0].system_id == 88
+    assert empire.visible_threats[0].military_power == 456.5
+    assert len(empire.strategic_paths) == 2
     assert empire.strategic_paths[0].source_system_id == 88
     assert empire.strategic_paths[0].nearest_colony_system_id == 77
     assert empire.strategic_paths[0].jumps_to_nearest_colony == 1
@@ -552,10 +571,12 @@ leaders=
     assert "Starbases: total 2; capacity used 1 / 5" in english_markdown
     assert "外交/接触: 关系 2，已通信 1，敌对 0，接壤 1，进行中首次接触 1" in markdown
     assert "可见星图/航道: 已知/相关星系 2，有星港 1，首次接触位置 1，外缘航道候选 2" in markdown
-    assert "威胁/边境跳数: 来源 1，最近殖民地 1 跳，最近星港 1 跳，最近升级星港 1 跳" in markdown
+    assert "可见敌对目标: 目标 1，最高军力 456.5，最近殖民地 1 跳" in markdown
+    assert "威胁/边境跳数: 来源 2，最近殖民地 1 跳，最近星港 1 跳，最近升级星港 1 跳" in markdown
     assert "Diplomacy/contacts: relations 2, communications 1, hostile 0, border contacts 1, active first contacts 1" in english_markdown
     assert "Known map/hyperlanes: known/relevant systems 2, starbase systems 1, first-contact locations 1, frontier link candidates 2" in english_markdown
-    assert "Threat/border jump distances: sources 1, nearest colony 1 jumps, nearest starbase 1 jumps, nearest upgraded starbase 1 jumps" in english_markdown
+    assert "Visible hostile targets: targets 1, highest power 456.5, nearest colony 1 jumps" in english_markdown
+    assert "Threat/border jump distances: sources 2, nearest colony 1 jumps, nearest starbase 1 jumps, nearest upgraded starbase 1 jumps" in english_markdown
     assert len(empire.megastructures) == 1
     assert empire.megastructures[0].megastructure_type == "grand_archive_0"
     assert empire.megastructures[0].system_id == 77

@@ -44,6 +44,7 @@ def build_report(
                 f"派系状态: {_format_faction_status(empire)}",
                 f"外交/接触: {_format_diplomacy(empire)}",
                 f"可见星图/航道: {_format_known_map(empire)}",
+                f"可见敌对目标: {_format_visible_threats(empire)}",
                 f"威胁/边境跳数: {_format_strategic_paths(empire)}",
                 f"殖民地数量: {len(empire.planets) or len(empire.owned_planets)}",
                 f"星球概览: {_format_planets(empire)}",
@@ -62,7 +63,7 @@ def build_report(
             ]
         )
         if detail_level is not DetailLevel.SUMMARY:
-            summary.insert(24, f"领袖概览: {_format_leaders(empire, detail_level)}")
+            summary.insert(25, f"领袖概览: {_format_leaders(empire, detail_level)}")
         if empire.monthly_income:
             summary.append(f"月收入概览: {_format_resources(empire.monthly_income)}")
         if detail_level is DetailLevel.FULL:
@@ -115,9 +116,9 @@ def build_report(
 
     next_steps = [
         "细化星球解析：把区划、建筑、岗位 ID 映射到定义名，并提取建造队列和失业/岗位缺口。",
-        "解析舰队、外交、边境与 chokepoint，用上下文判断无常备舰队是否是合理维护费策略。",
-        "解析领袖详情和内阁席位，把 owned_leaders ID 映射到姓名、等级、岗位和特质。",
-        "解析 galactic_object 和超空间航道，并在 player_visible 模式下做边境与 chokepoint 分析。",
+        "细化舰队、外交、边境、可见敌对情报与 chokepoint 权重，用上下文判断无常备舰队是否是合理维护费策略。",
+        "继续完善领袖详情和内阁席位，把特质、岗位、位置与内阁议程纳入建议上下文。",
+        "扩展 player_visible 地图分析，识别关键 chokepoint、边境星港和威胁方向的防御价值。",
         "建立按版本标记的 wiki/patch/community 知识库，让 LLM 基于结构化摘要和检索证据生成建议。",
     ]
 
@@ -165,6 +166,7 @@ def _build_english_report(
                 f"Faction status: {_format_faction_status_en(empire)}",
                 f"Diplomacy/contacts: {_format_diplomacy_en(empire)}",
                 f"Known map/hyperlanes: {_format_known_map_en(empire)}",
+                f"Visible hostile targets: {_format_visible_threats_en(empire)}",
                 f"Threat/border jump distances: {_format_strategic_paths_en(empire)}",
                 f"Colonies: {len(empire.planets) or len(empire.owned_planets)}",
                 f"Planet overview: {_format_planets_en(empire)}",
@@ -183,7 +185,7 @@ def _build_english_report(
             ]
         )
         if detail_level is not DetailLevel.SUMMARY:
-            summary.insert(24, f"Leader overview: {_format_leaders_en(empire, detail_level)}")
+            summary.insert(25, f"Leader overview: {_format_leaders_en(empire, detail_level)}")
         if empire.monthly_income:
             summary.append(f"Monthly income: {_format_resources(empire.monthly_income)}")
         if detail_level is DetailLevel.FULL:
@@ -233,8 +235,8 @@ def _build_english_report(
     next_steps = [
         "Replace fallback ID formatting with version-aware game localization data for English and Chinese.",
         "Extract planet construction queues, unemployment/job gaps, districts, and building definition names.",
-        "Parse fleets, diplomacy, borders, and chokepoints so a zero standing fleet can be judged in context.",
-        "Parse galactic objects and hyperlanes for player-visible border and chokepoint analysis.",
+        "Refine fleet, diplomacy, border, visible hostile intel, and chokepoint weights so a zero standing fleet can be judged in context.",
+        "Expand player-visible map analysis for key chokepoints, border starbases, and likely threat directions.",
         "Build a version-tagged wiki/patch/community knowledge index for evidence-backed LLM answers.",
     ]
 
@@ -457,6 +459,44 @@ def _format_known_map_en(empire: EmpireSummary) -> str:
     return (
         f"known/relevant systems {len(empire.known_systems)}, starbase systems {starbase_systems}, "
         f"first-contact locations {len(first_contact_locations)}, frontier link candidates {frontier_links}"
+    )
+
+
+def _format_visible_threats(empire: EmpireSummary) -> str:
+    if not empire.visible_threats:
+        return "尚未解析或未发现"
+    highest_power = max(
+        (threat.military_power for threat in empire.visible_threats if threat.military_power is not None),
+        default=None,
+    )
+    threat_paths = [
+        path for path in empire.strategic_paths if path.source_kind == "visible_threat"
+    ]
+    nearest_colony = _min_known_distance(
+        path.jumps_to_nearest_colony for path in threat_paths
+    )
+    return (
+        f"目标 {len(empire.visible_threats)}，最高军力 {_format_number(highest_power)}，"
+        f"最近殖民地 {_format_number(nearest_colony)} 跳"
+    )
+
+
+def _format_visible_threats_en(empire: EmpireSummary) -> str:
+    if not empire.visible_threats:
+        return "not parsed or none found"
+    highest_power = max(
+        (threat.military_power for threat in empire.visible_threats if threat.military_power is not None),
+        default=None,
+    )
+    threat_paths = [
+        path for path in empire.strategic_paths if path.source_kind == "visible_threat"
+    ]
+    nearest_colony = _min_known_distance(
+        path.jumps_to_nearest_colony for path in threat_paths
+    )
+    return (
+        f"targets {len(empire.visible_threats)}, highest power {_format_number_en(highest_power)}, "
+        f"nearest colony {_format_number_en(nearest_colony)} jumps"
     )
 
 
@@ -764,6 +804,7 @@ def _format_full_detail_lines(empire: EmpireSummary) -> list[str]:
         f"领袖细节: {_format_leader_details(empire)}",
         f"外交/接触细节: {_format_diplomacy_details(empire)}",
         f"可见星图/航道细节: {_format_known_map_details(empire)}",
+        f"可见敌对目标细节: {_format_visible_threat_details(empire)}",
         f"威胁/边境跳数细节: {_format_strategic_path_details(empire)}",
         f"舰队实例细节: {_format_fleet_details(empire)}",
         f"恒星基地细节: {_format_starbase_details(empire)}",
@@ -777,6 +818,7 @@ def _format_full_detail_lines_en(empire: EmpireSummary) -> list[str]:
         f"Leader details: {_format_leader_details(empire)}",
         f"Diplomacy/contact details: {_format_diplomacy_details(empire)}",
         f"Known map/hyperlane details: {_format_known_map_details(empire)}",
+        f"Visible hostile target details: {_format_visible_threat_details(empire)}",
         f"Threat/border jump details: {_format_strategic_path_details(empire)}",
         f"Fleet instance details: {_format_fleet_details(empire)}",
         f"Starbase details: {_format_starbase_details(empire)}",
@@ -882,6 +924,26 @@ def _format_known_map_details(empire: EmpireSummary, limit: int = 30) -> str:
     return " | ".join(parts) + suffix
 
 
+def _format_visible_threat_details(empire: EmpireSummary, limit: int = 30) -> str:
+    if not empire.visible_threats:
+        return "not parsed or none found"
+    system_names = {system.system_id: system.name for system in empire.known_systems}
+    parts = []
+    for threat in empire.visible_threats[:limit]:
+        system_label = (
+            _format_system_label(threat.system_id, system_names.get(threat.system_id))
+            if threat.system_id is not None
+            else "unknown system"
+        )
+        parts.append(
+            f"{threat.threat_id} {_format_name(threat.name) or 'unknown'}: "
+            f"system {system_label}, owner {_format_number(threat.owner)}, "
+            f"power {_format_number(threat.military_power)}"
+        )
+    suffix = f" (+{len(empire.visible_threats) - limit})" if len(empire.visible_threats) > limit else ""
+    return " | ".join(parts) + suffix
+
+
 def _format_strategic_path_details(empire: EmpireSummary, limit: int = 20) -> str:
     if not empire.strategic_paths:
         return "not parsed"
@@ -891,6 +953,11 @@ def _format_strategic_path_details(empire: EmpireSummary, limit: int = 20) -> st
             f"{path.source_kind} {path.source_id} at "
             f"{_format_system_label(path.source_system_id, path.source_system_name)}"
         )
+        if path.source_name:
+            source = (
+                f"{path.source_kind} {path.source_id} {_format_name(path.source_name) or path.source_name} "
+                f"at {_format_system_label(path.source_system_id, path.source_system_name)}"
+            )
         colony = _format_path_target(
             "colony",
             path.nearest_colony_system_id,
@@ -1149,10 +1216,21 @@ def _build_empire_findings(empire: EmpireSummary) -> list[Finding]:
                     f" 已解析可见航道显示，相关接触源距离最近殖民地 {_format_number(nearest_colony)} 跳，"
                     f"距离最近升级星港 {_format_number(nearest_upgraded)} 跳。"
                 )
+            highest_threat_power = max(
+                (
+                    threat.military_power
+                    for threat in empire.visible_threats
+                    if threat.military_power is not None
+                ),
+                default=None,
+            )
+            threat_note = ""
+            if highest_threat_power is not None:
+                threat_note = f" 玩家可见敌对目标最高军力约 {_format_number(highest_threat_power)}。"
             detail = (
                 f"存档显示当前军事实力和已用舰队容量都是 0；同时玩家可见外交关系中有 "
                 f"{hostile_border_contacts} 个敌对且接壤的对象，另有 {active_first_contacts} 个进行中的首次接触。"
-                f"{distance_note}"
+                f"{distance_note}{threat_note}"
             )
             recommendation = (
                 "零舰队省维护费策略已经需要重新评估：优先结合该接壤方向的星港火力、超空间 chokepoint、"
@@ -1245,10 +1323,24 @@ def _build_empire_findings_en(empire: EmpireSummary) -> list[Finding]:
                     f"{_format_number_en(nearest_colony)} jump(s) from the nearest colony and "
                     f"{_format_number_en(nearest_upgraded)} jump(s) from the nearest upgraded starbase."
                 )
+            highest_threat_power = max(
+                (
+                    threat.military_power
+                    for threat in empire.visible_threats
+                    if threat.military_power is not None
+                ),
+                default=None,
+            )
+            threat_note = ""
+            if highest_threat_power is not None:
+                threat_note = (
+                    f" The highest visible hostile target power is about "
+                    f"{_format_number_en(highest_threat_power)}."
+                )
             detail = (
                 f"The save reports both military power and used naval capacity as 0; visible diplomacy also shows "
                 f"{hostile_border_contacts} hostile border contact(s), with {active_first_contacts} active first contact(s)."
-                f"{distance_note}"
+                f"{distance_note}{threat_note}"
             )
             recommendation = (
                 "Re-evaluate the upkeep-saving zero-fleet strategy with starbase firepower, hyperlane chokepoints, "

@@ -41,6 +41,7 @@ from .models import (
     StarbaseSummary,
     StrategicPathSummary,
     SystemSummary,
+    VisibleThreatSummary,
 )
 
 
@@ -144,6 +145,7 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
     owned_leaders_block = extract_block(country_block, "owned_leaders")
     owned_fleets_block = extract_block(country_block, "owned_fleets")
     relations_manager_block = extract_block(country_block, "relations_manager") or ""
+    intel_block = extract_block(country_block, "intel") or ""
     ship_design_collection_block = extract_block(country_block, "ship_design_collection") or ""
     ship_design_ids_block = extract_block(ship_design_collection_block, "ship_design")
     owned_leaders = parse_int_list_block(owned_leaders_block or "")
@@ -164,6 +166,7 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
         starbases,
         first_contacts,
     )
+    visible_threats = _extract_visible_threats(intel_block)
 
     return EmpireSummary(
         country_id=country_id,
@@ -204,7 +207,10 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
         diplomatic_relations=_extract_diplomatic_relations(relations_manager_block, gamestate_text),
         first_contacts=first_contacts,
         known_systems=known_systems,
-        strategic_paths=_build_strategic_paths(known_systems, starbases, first_contacts),
+        visible_threats=visible_threats,
+        strategic_paths=_build_strategic_paths(
+            known_systems, starbases, first_contacts, visible_threats
+        ),
         technologies=_extract_technologies(country_block),
         monthly_income=monthly_income,
         fleet_size=_as_optional_float(find_scalar(country_block, "fleet_size")),
@@ -305,6 +311,30 @@ def _extract_first_contacts(gamestate_text: str, player_country_id: int) -> list
     return contacts
 
 
+def _extract_visible_threats(intel_block: str) -> list[VisibleThreatSummary]:
+    threats: list[VisibleThreatSummary] = []
+    threat_id = 0
+    for object_block in iter_anonymous_blocks(intel_block):
+        object_system_id = _as_optional_int(find_scalar(object_block, "object"))
+        hostile_block = extract_block(object_block, "hostile") or ""
+        for hostile_entry in iter_anonymous_blocks(hostile_block):
+            coordinate_block = extract_block(hostile_entry, "coordinate") or ""
+            system_id = _as_optional_int(find_scalar(coordinate_block, "origin"))
+            threats.append(
+                VisibleThreatSummary(
+                    threat_id=threat_id,
+                    system_id=system_id if system_id is not None else object_system_id,
+                    name=_extract_localized_name(hostile_entry),
+                    owner=_as_optional_int(find_scalar(hostile_entry, "owner")),
+                    military_power=_as_optional_float(
+                        find_scalar(hostile_entry, "military_power")
+                    ),
+                )
+            )
+            threat_id += 1
+    return threats
+
+
 def _extract_known_systems(
     gamestate_text: str,
     player_country_id: int,
@@ -383,6 +413,7 @@ def _build_strategic_paths(
     known_systems: list[SystemSummary],
     starbases: list[StarbaseSummary],
     first_contacts: list[FirstContactSummary],
+    visible_threats: list[VisibleThreatSummary],
 ) -> list[StrategicPathSummary]:
     if not known_systems:
         return []
@@ -424,7 +455,44 @@ def _build_strategic_paths(
             StrategicPathSummary(
                 source_kind="first_contact",
                 source_id=contact.contact_id,
+                source_name=contact.name,
                 source_system_id=contact.location_id,
+                source_system_name=source_system.name if source_system else None,
+                nearest_colony_system_id=nearest_colony,
+                nearest_colony_system_name=_system_name(systems_by_id, nearest_colony),
+                jumps_to_nearest_colony=_distance_to(distances, nearest_colony),
+                nearest_starbase_system_id=nearest_starbase,
+                nearest_starbase_system_name=_system_name(systems_by_id, nearest_starbase),
+                jumps_to_nearest_starbase=_distance_to(distances, nearest_starbase),
+                nearest_upgraded_starbase_system_id=nearest_upgraded,
+                nearest_upgraded_starbase_system_name=_system_name(systems_by_id, nearest_upgraded),
+                jumps_to_nearest_upgraded_starbase=_distance_to(distances, nearest_upgraded),
+                nearest_shipyard_system_id=nearest_shipyard,
+                nearest_shipyard_system_name=_system_name(systems_by_id, nearest_shipyard),
+                jumps_to_nearest_shipyard=_distance_to(distances, nearest_shipyard),
+            )
+        )
+    for threat in visible_threats:
+        if threat.system_id is None:
+            continue
+        source = ("visible_threat", threat.threat_id, threat.system_id)
+        if source in seen_sources:
+            continue
+        seen_sources.add(source)
+        if threat.system_id not in systems_by_id:
+            continue
+        distances = _shortest_known_distances(graph, threat.system_id)
+        nearest_colony = _nearest_system(distances, colony_system_ids)
+        nearest_starbase = _nearest_system(distances, starbase_system_ids)
+        nearest_upgraded = _nearest_system(distances, upgraded_starbase_system_ids)
+        nearest_shipyard = _nearest_system(distances, shipyard_system_ids)
+        source_system = systems_by_id.get(threat.system_id)
+        paths.append(
+            StrategicPathSummary(
+                source_kind="visible_threat",
+                source_id=threat.threat_id,
+                source_name=threat.name,
+                source_system_id=threat.system_id,
                 source_system_name=source_system.name if source_system else None,
                 nearest_colony_system_id=nearest_colony,
                 nearest_colony_system_name=_system_name(systems_by_id, nearest_colony),
