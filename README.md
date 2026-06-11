@@ -126,6 +126,74 @@ python -m stellaris_advisor --detail-level full "C:\path\to\save.sav"
 
 `player_visible` 是默认模式，不应泄露隐藏 AI 帝国数据或未发现地图信息。`omniscient` 仅用于明确的剧透/调试分析。
 
+## AI Advice Trial / AI 建议试用
+
+The advisor can now turn the parsed report into a copy/paste LLM prompt:
+
+```powershell
+python -m stellaris_advisor --advice --language zh --detail-level standard "C:\path\to\save.sav"
+python -m stellaris_advisor --advice --language en --detail-level standard "C:\path\to\save.sav"
+```
+
+You can add your own question:
+
+```powershell
+python -m stellaris_advisor --advice --advice-focus "我应该先补舰队、科研，还是继续扩张？" "C:\path\to\save.sav"
+```
+
+This default mode prints a prompt that can be pasted into ChatGPT, DeepSeek, or another model. It is intentionally model-independent.
+
+If you want the CLI to call an OpenAI-compatible API directly, set an API key and model:
+
+```powershell
+$env:STELLARIS_ADVISOR_API_KEY="your_api_key"
+$env:STELLARIS_ADVISOR_MODEL="your_model_name"
+python -m stellaris_advisor --advice --advice-provider openai-compatible "C:\path\to\save.sav"
+```
+
+For another OpenAI-compatible provider, set the base URL as well:
+
+```powershell
+$env:STELLARIS_ADVISOR_BASE_URL="https://api.deepseek.com/v1"
+$env:STELLARIS_ADVISOR_MODEL="deepseek-chat"
+python -m stellaris_advisor --advice --advice-provider openai-compatible "C:\path\to\save.sav"
+```
+
+The first advice version uses only parsed save facts. Wiki, patch-note, and community retrieval are still planned as a later RAG layer, so mechanic-specific advice should be treated as provisional.
+
+现阶段已经可以把读取器输出变成可复制给大模型的顾问提示词：
+
+```powershell
+python -m stellaris_advisor --advice --language zh --detail-level standard "C:\path\to\save.sav"
+python -m stellaris_advisor --advice --language en --detail-level standard "C:\path\to\save.sav"
+```
+
+也可以附加你的具体问题：
+
+```powershell
+python -m stellaris_advisor --advice --advice-focus "我应该先补舰队、科研，还是继续扩张？" "C:\path\to\save.sav"
+```
+
+默认模式只打印提示词，你可以复制到 ChatGPT、DeepSeek 或其他模型中测试。读取器和模型是解耦的，所以后续切换模型不需要重写存档解析。
+
+如果要让命令行直接调用兼容 OpenAI Chat Completions 的接口，可以设置 API Key 和模型：
+
+```powershell
+$env:STELLARIS_ADVISOR_API_KEY="your_api_key"
+$env:STELLARIS_ADVISOR_MODEL="your_model_name"
+python -m stellaris_advisor --advice --advice-provider openai-compatible "C:\path\to\save.sav"
+```
+
+如果使用其他兼容接口，再设置 base URL：
+
+```powershell
+$env:STELLARIS_ADVISOR_BASE_URL="https://api.deepseek.com/v1"
+$env:STELLARIS_ADVISOR_MODEL="deepseek-chat"
+python -m stellaris_advisor --advice --advice-provider openai-compatible "C:\path\to\save.sav"
+```
+
+第一版建议只基于已经解析出的存档事实。Wiki、补丁说明、社区讨论的检索增强层还在后续计划中，因此涉及具体机制强度的建议应视为待验证。
+
 ## MVP Goals / MVP 目标
 
 1. Read `.sav` files and extract `meta` plus selected `gamestate` signals.

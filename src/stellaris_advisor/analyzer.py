@@ -147,37 +147,37 @@ def _build_english_report(
         summary.extend(
             [
                 f"Player empire: {empire.name or 'unknown'}",
-                f"Government/authority: {_format_id_value(empire.government_type)} / {_format_id_value(empire.authority)}",
-                f"Origin: {_format_id_value(empire.origin)}",
-                f"Ethics: {_format_id_list(empire.ethics)}",
-                f"Civics: {_format_id_list(empire.civics)}",
+                f"Government/authority: {_format_id_value_en(empire.government_type)} / {_format_id_value_en(empire.authority)}",
+                f"Origin: {_format_id_value_en(empire.origin)}",
+                f"Ethics: {_format_id_list_en(empire.ethics)}",
+                f"Civics: {_format_id_list_en(empire.civics)}",
                 f"Tradition trees: {_format_id_list_en(empire.tradition_categories)}",
                 f"Selected traditions: {len(empire.traditions)}",
                 f"Tradition details: {_format_tradition_details_en(empire)}",
                 f"Ascension perks: {_format_id_list_en(empire.ascension_perks)}",
-                f"Current agenda: {_format_id_value(empire.council_agenda)} ({_format_number(empire.council_agenda_progress)})",
+                f"Current agenda: {_format_id_value_en(empire.council_agenda)} ({_format_number_en(empire.council_agenda_progress)})",
                 f"Active edicts: {_format_id_list_en(empire.edicts)}",
                 f"Policy flags: {_format_id_list_en(empire.policy_flags, limit=6)}",
                 f"Leaders: {len(empire.leaders) or len(empire.owned_leaders)}",
                 f"Faction status: {_format_faction_status_en(empire)}",
                 f"Colonies: {len(empire.planets) or len(empire.owned_planets)}",
-                f"Planet overview: {_format_planets(empire)}",
-                f"Starbases: {len(empire.starbases)} / {_format_number(empire.starbase_capacity)}",
-                f"Starbase overview: {_format_starbases(empire, detail_level)}",
+                f"Planet overview: {_format_planets_en(empire)}",
+                f"Starbases: {len(empire.starbases)} / {_format_number_en(empire.starbase_capacity)}",
+                f"Starbase overview: {_format_starbases_en(empire, detail_level)}",
                 f"Fleet instances: {_format_fleet_counts_en(empire)}",
                 f"Megastructures: {_format_megastructures_en(empire)}",
-                f"Ship designs: {_format_ship_designs(empire, detail_level)}",
+                f"Ship designs: {_format_ship_designs_en(empire, detail_level)}",
                 f"Researched technologies: {_format_technologies_en(empire)}",
-                f"Empire size: {_format_number(empire.empire_size)}",
-                f"Sapient pops: {_format_number(empire.sapient_pops)}",
-                f"Used naval capacity: {_format_number(empire.used_naval_capacity)}",
-                f"Economy power: {_format_number(empire.economy_power)}",
-                f"Military power: {_format_number(empire.military_power)}",
-                f"Victory rank: {_format_number(empire.victory_rank)}",
+                f"Empire size: {_format_number_en(empire.empire_size)}",
+                f"Sapient pops: {_format_number_en(empire.sapient_pops)}",
+                f"Used naval capacity: {_format_number_en(empire.used_naval_capacity)}",
+                f"Economy power: {_format_number_en(empire.economy_power)}",
+                f"Military power: {_format_number_en(empire.military_power)}",
+                f"Victory rank: {_format_number_en(empire.victory_rank)}",
             ]
         )
         if detail_level is not DetailLevel.SUMMARY:
-            summary.insert(21, f"Leader overview: {_format_leaders(empire, detail_level)}")
+            summary.insert(21, f"Leader overview: {_format_leaders_en(empire, detail_level)}")
         if empire.monthly_income:
             summary.append(f"Monthly income: {_format_resources(empire.monthly_income)}")
         if detail_level is DetailLevel.FULL:
@@ -309,6 +309,14 @@ def _format_number(value: object) -> str:
     return str(value)
 
 
+def _format_number_en(value: object) -> str:
+    if value is None:
+        return "unknown"
+    if isinstance(value, float):
+        return f"{value:.1f}".rstrip("0").rstrip(".")
+    return str(value)
+
+
 def _format_value(value: object) -> str:
     if value is None or value == "":
         return "未知"
@@ -318,6 +326,12 @@ def _format_value(value: object) -> str:
 def _format_id_value(value: object) -> str:
     if value is None or value == "":
         return "未知"
+    return display_name(value)
+
+
+def _format_id_value_en(value: object) -> str:
+    if value is None or value == "":
+        return "unknown"
     return display_name(value)
 
 
@@ -405,6 +419,33 @@ def _format_leaders(
     return " | ".join(parts) + suffix
 
 
+def _format_leaders_en(
+    empire: EmpireSummary,
+    detail_level: DetailLevel = DetailLevel.STANDARD,
+    limit: int = 6,
+) -> str:
+    if not empire.leaders:
+        return "not parsed"
+    parts = []
+    for leader in empire.leaders[:limit]:
+        traits = ""
+        if detail_level is DetailLevel.FULL and leader.traits:
+            traits = f"; traits {', '.join(display_name(trait) for trait in leader.traits)}"
+        location = ""
+        if leader.location_type:
+            location = f"; {leader.location_type}"
+            if leader.location_id is not None:
+                location += f" {leader.location_id}"
+        council = ""
+        if leader.council_position_id is not None:
+            council = f"; council {leader.council_position_id}"
+        parts.append(
+            f"{_format_name(leader.name) or leader.leader_id} ({leader.leader_class or 'unknown'} L{_format_number_en(leader.level)}{location}{council}{traits})"
+        )
+    suffix = f" (+{len(empire.leaders) - limit})" if len(empire.leaders) > limit else ""
+    return " | ".join(parts) + suffix
+
+
 def _format_planets(empire: EmpireSummary, limit: int = 6) -> str:
     if not empire.planets:
         return "尚未解析详情"
@@ -417,6 +458,26 @@ def _format_planets(empire: EmpireSummary, limit: int = 6) -> str:
             f"stab {_format_number(planet.stability)}",
             f"housing {_format_number(planet.free_housing)}",
             f"amen {_format_number(planet.free_amenities)}",
+        ]
+        if planet.designation:
+            stats.append(compact_name(planet.designation))
+        parts.append(f"{_format_name(planet.name) or planet.planet_id} ({', '.join(stats)})")
+    suffix = f" (+{len(empire.planets) - limit})" if len(empire.planets) > limit else ""
+    return " | ".join(parts) + suffix
+
+
+def _format_planets_en(empire: EmpireSummary, limit: int = 6) -> str:
+    if not empire.planets:
+        return "not parsed"
+    parts = []
+    for planet in empire.planets[:limit]:
+        stats = [
+            compact_name(planet.planet_class) if planet.planet_class else "unknown",
+            f"size {_format_number_en(planet.planet_size)}",
+            f"pops {_format_number_en(planet.num_sapient_pops)}",
+            f"stab {_format_number_en(planet.stability)}",
+            f"housing {_format_number_en(planet.free_housing)}",
+            f"amen {_format_number_en(planet.free_amenities)}",
         ]
         if planet.designation:
             stats.append(compact_name(planet.designation))
@@ -452,6 +513,38 @@ def _format_starbases(
             )
         parts.append(
             f"{system} ({compact_name(starbase.level) if starbase.level else 'unknown'}, power {_format_number(starbase.military_power)}{modules}{buildings})"
+        )
+    suffix = f" (+{len(empire.starbases) - limit})" if len(empire.starbases) > limit else ""
+    return " | ".join(parts) + suffix
+
+
+def _format_starbases_en(
+    empire: EmpireSummary,
+    detail_level: DetailLevel = DetailLevel.STANDARD,
+    limit: int = 6,
+) -> str:
+    if not empire.starbases:
+        return "not parsed"
+    parts = []
+    for starbase in empire.starbases[:limit]:
+        system = _format_name(starbase.system_name) or (
+            f"system {starbase.system_id}" if starbase.system_id is not None else "unknown system"
+        )
+        modules = ""
+        buildings = ""
+        if detail_level is DetailLevel.FULL:
+            modules = (
+                f"; modules {', '.join(compact_name(module) for module in starbase.modules)}"
+                if starbase.modules
+                else ""
+            )
+            buildings = (
+                f"; buildings {', '.join(compact_name(building) for building in starbase.buildings)}"
+                if starbase.buildings
+                else ""
+            )
+        parts.append(
+            f"{system} ({compact_name(starbase.level) if starbase.level else 'unknown'}, power {_format_number_en(starbase.military_power)}{modules}{buildings})"
         )
     suffix = f" (+{len(empire.starbases) - limit})" if len(empire.starbases) > limit else ""
     return " | ".join(parts) + suffix
@@ -506,6 +599,18 @@ def _format_ship_designs(
         )
     suffix = f" (+{len(empire.ship_designs) - limit})" if len(empire.ship_designs) > limit else ""
     return " | ".join(parts) + suffix
+
+
+def _format_ship_designs_en(
+    empire: EmpireSummary,
+    detail_level: DetailLevel = DetailLevel.STANDARD,
+    limit: int = 6,
+) -> str:
+    if not empire.ship_designs:
+        if empire.ship_design_ids:
+            return f"found {len(empire.ship_design_ids)} design IDs, details not parsed"
+        return "no ship designs found"
+    return _format_ship_designs(empire, detail_level=detail_level, limit=limit)
 
 
 def _format_full_detail_lines(empire: EmpireSummary) -> list[str]:

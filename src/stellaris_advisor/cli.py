@@ -3,6 +3,12 @@ from __future__ import annotations
 import argparse
 import sys
 
+from .advice import (
+    AdviceError,
+    api_key_from_env,
+    build_advice_prompt,
+    request_openai_compatible_advice,
+)
 from .analyzer import build_report, render_markdown
 from .detail_level import DetailLevel
 from .report_language import ReportLanguage
@@ -31,6 +37,42 @@ def main(argv: list[str] | None = None) -> int:
         default=DetailLevel.STANDARD.value,
         help="Report detail level. Defaults to standard.",
     )
+    parser.add_argument(
+        "--advice",
+        action="store_true",
+        help="Generate an LLM advice prompt, or call an OpenAI-compatible chat API.",
+    )
+    parser.add_argument(
+        "--advice-provider",
+        choices=["prompt", "openai-compatible"],
+        default="prompt",
+        help="Advice backend. 'prompt' prints a copy/paste prompt. Defaults to prompt.",
+    )
+    parser.add_argument(
+        "--advice-focus",
+        help="Optional player question or strategic focus for the advisor.",
+    )
+    parser.add_argument(
+        "--advice-model",
+        default=None,
+        help="Model name for --advice-provider openai-compatible. May also use STELLARIS_ADVISOR_MODEL.",
+    )
+    parser.add_argument(
+        "--advice-base-url",
+        default=None,
+        help="Base URL for an OpenAI-compatible API. May also use STELLARIS_ADVISOR_BASE_URL.",
+    )
+    parser.add_argument(
+        "--advice-api-key-env",
+        default="STELLARIS_ADVISOR_API_KEY",
+        help="Environment variable containing the API key. Defaults to STELLARIS_ADVISOR_API_KEY.",
+    )
+    parser.add_argument(
+        "--advice-timeout",
+        type=int,
+        default=60,
+        help="LLM request timeout in seconds. Defaults to 60.",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -45,8 +87,38 @@ def main(argv: list[str] | None = None) -> int:
         ReportLanguage(args.language),
         DetailLevel(args.detail_level),
     )
-    print(render_markdown(report))
+    if not args.advice:
+        print(render_markdown(report))
+        return 0
+
+    prompt = build_advice_prompt(report, args.advice_focus)
+    if args.advice_provider == "prompt":
+        print(prompt.render())
+        return 0
+
+    model = args.advice_model or _env("STELLARIS_ADVISOR_MODEL")
+    base_url = args.advice_base_url or _env("STELLARIS_ADVISOR_BASE_URL") or "https://api.openai.com/v1"
+    api_key = api_key_from_env(args.advice_api_key_env)
+    try:
+        print(
+            request_openai_compatible_advice(
+                prompt,
+                model=model,
+                api_key=api_key,
+                base_url=base_url,
+                timeout_seconds=args.advice_timeout,
+            )
+        )
+    except AdviceError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 3
     return 0
+
+
+def _env(name: str) -> str:
+    import os
+
+    return os.environ.get(name, "")
 
 
 if __name__ == "__main__":
