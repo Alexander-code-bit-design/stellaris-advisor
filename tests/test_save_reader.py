@@ -2,6 +2,7 @@ from pathlib import Path
 from zipfile import ZipFile
 
 from stellaris_advisor.analyzer import build_report, render_markdown
+from stellaris_advisor.report_language import ReportLanguage
 from stellaris_advisor.save_reader import read_save
 from stellaris_advisor.visibility import VisibilityMode
 
@@ -31,6 +32,18 @@ def test_build_report_renders_markdown() -> None:
     assert "可见性模式: `player_visible`" in markdown
     assert "游戏版本: 3.12.5" in markdown
     assert "下一步开发" in markdown
+
+
+def test_build_report_renders_english_markdown() -> None:
+    save = read_save(FIXTURE)
+    report = build_report(save, language=ReportLanguage.EN)
+    markdown = render_markdown(report)
+
+    assert report.language is ReportLanguage.EN
+    assert "Visibility mode: `player_visible`" in markdown
+    assert "## Situation Summary" in markdown
+    assert "Game version: 3.12.5" in markdown
+    assert "## Next Development Steps" in markdown
 
 
 def test_read_player_empire_deep_fields(tmp_path: Path) -> None:

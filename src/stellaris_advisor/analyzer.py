@@ -2,12 +2,18 @@ from __future__ import annotations
 
 from .display_names import compact_name, display_name
 from .models import AdvisorReport, EmpireSummary, Finding, SaveGame
+from .report_language import ReportLanguage
 from .visibility import VisibilityMode
 
 
 def build_report(
-    save: SaveGame, visibility_mode: VisibilityMode = VisibilityMode.PLAYER_VISIBLE
+    save: SaveGame,
+    visibility_mode: VisibilityMode = VisibilityMode.PLAYER_VISIBLE,
+    language: ReportLanguage = ReportLanguage.ZH,
 ) -> AdvisorReport:
+    if language is ReportLanguage.EN:
+        return _build_english_report(save, visibility_mode, language)
+
     meta = save.metadata
     empire = save.player_empire
     summary = [
@@ -108,6 +114,113 @@ def build_report(
 
     return AdvisorReport(
         visibility_mode=visibility_mode,
+        language=language,
+        summary=summary,
+        findings=findings,
+        next_steps=next_steps,
+    )
+
+
+def _build_english_report(
+    save: SaveGame, visibility_mode: VisibilityMode, language: ReportLanguage
+) -> AdvisorReport:
+    meta = save.metadata
+    empire = save.player_empire
+    summary = [
+        f"Save name: {meta.name or 'unknown'}",
+        f"Game version: {meta.version or 'unknown'}",
+        f"Current date: {meta.date or 'unknown'}",
+        f"Player country ID: {meta.player_country if meta.player_country is not None else 'unknown'}",
+        f"Ironman: {_format_bool_en(meta.ironman)}",
+    ]
+    if empire is not None:
+        summary.extend(
+            [
+                f"Player empire: {empire.name or 'unknown'}",
+                f"Government/authority: {_format_id_value(empire.government_type)} / {_format_id_value(empire.authority)}",
+                f"Origin: {_format_id_value(empire.origin)}",
+                f"Ethics: {_format_id_list(empire.ethics)}",
+                f"Civics: {_format_id_list(empire.civics)}",
+                f"Tradition trees: {_format_id_list_en(empire.tradition_categories)}",
+                f"Selected traditions: {len(empire.traditions)}",
+                f"Tradition details: {_format_tradition_details_en(empire)}",
+                f"Ascension perks: {_format_id_list_en(empire.ascension_perks)}",
+                f"Current agenda: {_format_id_value(empire.council_agenda)} ({_format_number(empire.council_agenda_progress)})",
+                f"Active edicts: {_format_id_list_en(empire.edicts)}",
+                f"Policy flags: {_format_id_list_en(empire.policy_flags, limit=6)}",
+                f"Leaders: {len(empire.leaders) or len(empire.owned_leaders)}",
+                f"Leader overview: {_format_leaders(empire)}",
+                f"Faction status: {_format_faction_status_en(empire)}",
+                f"Colonies: {len(empire.planets) or len(empire.owned_planets)}",
+                f"Planet overview: {_format_planets(empire)}",
+                f"Starbases: {len(empire.starbases)} / {_format_number(empire.starbase_capacity)}",
+                f"Starbase overview: {_format_starbases(empire)}",
+                f"Megastructures: {_format_megastructures_en(empire)}",
+                f"Ship designs: {_format_ship_designs(empire)}",
+                f"Researched technologies: {_format_technologies_en(empire)}",
+                f"Empire size: {_format_number(empire.empire_size)}",
+                f"Sapient pops: {_format_number(empire.sapient_pops)}",
+                f"Used naval capacity: {_format_number(empire.used_naval_capacity)}",
+                f"Economy power: {_format_number(empire.economy_power)}",
+                f"Military power: {_format_number(empire.military_power)}",
+                f"Victory rank: {_format_number(empire.victory_rank)}",
+            ]
+        )
+        if empire.monthly_income:
+            summary.append(f"Monthly income: {_format_resources(empire.monthly_income)}")
+
+    findings: list[Finding] = []
+    if meta.version is None:
+        findings.append(
+            Finding(
+                title="Missing game version",
+                severity="medium",
+                detail="No clear Stellaris version was parsed from the save metadata.",
+                recommendation="Lower advice confidence and ask the player to confirm version, DLCs, and mods.",
+            )
+        )
+    if empire is None:
+        findings.append(
+            Finding(
+                title="Player empire not located",
+                severity="medium",
+                detail="The parser could not match the player country ID to a country block.",
+                recommendation="Confirm player country parsing before analyzing empire state.",
+            )
+        )
+    if empire is not None and not empire.monthly_income:
+        findings.append(
+            Finding(
+                title="Monthly income not extracted",
+                severity="medium",
+                detail="The player empire was found, but no monthly resource income summary was parsed.",
+                recommendation="Inspect this save version's budget/current_month/income structure and add compatibility handling.",
+            )
+        )
+    if empire is not None:
+        findings.extend(_build_empire_findings_en(empire))
+        findings.extend(_build_planet_findings_en(empire))
+        if not empire.planets:
+            findings.append(
+                Finding(
+                    title="Planet data not structured",
+                    severity="low",
+                    detail="The save was read, but no owned planet details were extracted.",
+                    recommendation="Expand planet parsing for housing, jobs, stability, districts, and construction queues.",
+                )
+            )
+
+    next_steps = [
+        "Replace fallback ID formatting with version-aware game localization data for English and Chinese.",
+        "Extract planet construction queues, unemployment/job gaps, districts, and building definition names.",
+        "Parse fleets, reinforcement queues, ship classes, and current military posture.",
+        "Parse galactic objects and hyperlanes for player-visible border and chokepoint analysis.",
+        "Build a version-tagged wiki/patch/community knowledge index for evidence-backed LLM answers.",
+    ]
+
+    return AdvisorReport(
+        visibility_mode=visibility_mode,
+        language=language,
         summary=summary,
         findings=findings,
         next_steps=next_steps,
@@ -115,29 +228,34 @@ def build_report(
 
 
 def render_markdown(report: AdvisorReport) -> str:
+    is_en = report.language is ReportLanguage.EN
     lines = [
         "# Stellaris Advisor Report",
         "",
-        f"可见性模式: `{report.visibility_mode.value}`",
+        f"{'Visibility mode' if is_en else '可见性模式'}: `{report.visibility_mode.value}`",
         "",
-        "## 局势摘要",
+        f"## {'Situation Summary' if is_en else '局势摘要'}",
     ]
     if report.visibility_mode is VisibilityMode.PLAYER_VISIBLE:
         lines.extend(
             [
                 "",
-                "> 默认仅基于玩家可见信息生成建议；隐藏 AI 情报、未发现星系和剧透信息不得进入报告。",
+                "> Advice is generated from player-visible information only; hidden AI intelligence, undiscovered systems, and spoiler data must not enter the report."
+                if is_en
+                else "> 默认仅基于玩家可见信息生成建议；隐藏 AI 情报、未发现星系和剧透信息不得进入报告。",
             ]
         )
     elif report.visibility_mode is VisibilityMode.OMNISCIENT:
         lines.extend(
             [
                 "",
-                "> 警告：当前为全知/剧透模式，后续版本可能显示正常游玩不可见的信息。",
+                "> Warning: omniscient/spoiler mode may include information not normally visible during play."
+                if is_en
+                else "> 警告：当前为全知/剧透模式，后续版本可能显示正常游玩不可见的信息。",
             ]
         )
     lines.extend(f"- {item}" for item in report.summary)
-    lines.extend(["", "## 发现的问题"])
+    lines.extend(["", f"## {'Findings' if is_en else '发现的问题'}"])
     if report.findings:
         for finding in report.findings:
             lines.extend(
@@ -145,13 +263,13 @@ def render_markdown(report: AdvisorReport) -> str:
                     f"### [{finding.severity}] {finding.title}",
                     finding.detail,
                     "",
-                    f"建议: {finding.recommendation}",
+                    f"{'Recommendation' if is_en else '建议'}: {finding.recommendation}",
                     "",
                 ]
             )
     else:
-        lines.append("- 暂未发现明显问题。")
-    lines.extend(["", "## 下一步开发"])
+        lines.append("- No obvious issues found." if is_en else "- 暂未发现明显问题。")
+    lines.extend(["", f"## {'Next Development Steps' if is_en else '下一步开发'}"])
     lines.extend(f"- {step}" for step in report.next_steps)
     return "\n".join(lines).strip() + "\n"
 
@@ -160,6 +278,12 @@ def _format_bool(value: bool | None) -> str:
     if value is None:
         return "未知"
     return "是" if value else "否"
+
+
+def _format_bool_en(value: bool | None) -> str:
+    if value is None:
+        return "unknown"
+    return "yes" if value else "no"
 
 
 def _format_number(value: object) -> str:
@@ -207,6 +331,14 @@ def _format_id_list(values: list[object], limit: int = 8) -> str:
     return ", ".join(shown) + suffix
 
 
+def _format_id_list_en(values: list[object], limit: int = 8) -> str:
+    if not values:
+        return "unknown"
+    shown = [display_name(value) for value in values[:limit]]
+    suffix = f" (+{len(values) - limit})" if len(values) > limit else ""
+    return ", ".join(shown) + suffix
+
+
 def _format_faction_status(empire: EmpireSummary) -> str:
     if empire.pop_factions_applicable is False:
         return "不适用（格式塔或无派系政体）"
@@ -217,6 +349,18 @@ def _format_faction_status(empire: EmpireSummary) -> str:
     if empire.pop_faction_members == 0:
         return "适用，但当前尚未形成派系"
     return f"适用，派系成员 {empire.pop_faction_members}"
+
+
+def _format_faction_status_en(empire: EmpireSummary) -> str:
+    if empire.pop_factions_applicable is False:
+        return "not applicable (gestalt or factionless authority)"
+    if empire.pop_factions_applicable is None:
+        return "unknown"
+    if empire.pop_faction_members is None:
+        return "applicable, but member count has not been parsed"
+    if empire.pop_faction_members == 0:
+        return "applicable, but no factions have formed yet"
+    return f"applicable, {empire.pop_faction_members} faction members"
 
 
 def _format_leaders(empire: EmpireSummary, limit: int = 6) -> str:
@@ -305,6 +449,12 @@ def _format_megastructures(empire: EmpireSummary, limit: int = 6) -> str:
     return " | ".join(parts) + suffix
 
 
+def _format_megastructures_en(empire: EmpireSummary, limit: int = 6) -> str:
+    if not empire.megastructures:
+        return "no player-owned megastructures found"
+    return _format_megastructures(empire, limit=limit)
+
+
 def _format_ship_designs(empire: EmpireSummary, limit: int = 6) -> str:
     if not empire.ship_designs:
         if empire.ship_design_ids:
@@ -334,6 +484,14 @@ def _format_technologies(empire: EmpireSummary, limit: int = 10) -> str:
     return f"{len(empire.technologies)} 项: " + ", ".join(shown) + suffix
 
 
+def _format_technologies_en(empire: EmpireSummary, limit: int = 10) -> str:
+    if not empire.technologies:
+        return "not parsed yet"
+    shown = [display_name(tech) for tech in list(empire.technologies.keys())[:limit]]
+    suffix = f" (+{len(empire.technologies) - limit})" if len(empire.technologies) > limit else ""
+    return f"{len(empire.technologies)} items: " + ", ".join(shown) + suffix
+
+
 def _format_tradition_details(empire: EmpireSummary, limit: int = 6) -> str:
     if not empire.traditions:
         return "尚未选择传统"
@@ -347,6 +505,12 @@ def _format_tradition_details(empire: EmpireSummary, limit: int = 6) -> str:
         suffix = f" (+{len(traditions) - limit})" if len(traditions) > limit else ""
         parts.append(f"{tree}: {shown}{suffix}")
     return " | ".join(parts)
+
+
+def _format_tradition_details_en(empire: EmpireSummary, limit: int = 6) -> str:
+    if not empire.traditions:
+        return "no traditions selected"
+    return _format_tradition_details(empire, limit=limit)
 
 
 def _tradition_tree_name(tradition: str) -> str:
@@ -431,6 +595,62 @@ def _build_empire_findings(empire: EmpireSummary) -> list[Finding]:
     return findings
 
 
+def _build_empire_findings_en(empire: EmpireSummary) -> list[Finding]:
+    findings: list[Finding] = []
+
+    if empire.origin is None or not empire.civics or not empire.ethics:
+        findings.append(
+            Finding(
+                title="Incomplete empire identity data",
+                severity="low",
+                detail="Origin, civics, or ethics were not fully extracted.",
+                recommendation="Continue expanding player country block parsing and add version-specific compatibility tests.",
+            )
+        )
+
+    if (
+        empire.military_power is not None
+        and empire.used_naval_capacity is not None
+        and empire.military_power <= 0
+        and empire.used_naval_capacity <= 0
+    ):
+        findings.append(
+            Finding(
+                title="Military power is zero",
+                severity="high",
+                detail="The save reports both military power and used naval capacity as 0.",
+                recommendation="Confirm whether the player truly has no fleet or whether this save version uses separate fields for biological ships.",
+            )
+        )
+
+    alloy_income = empire.monthly_income.get("alloys")
+    if alloy_income is not None and alloy_income < 30:
+        findings.append(
+            Finding(
+                title="Low monthly alloy income",
+                severity="medium",
+                detail=f"Current alloy income is about {alloy_income:.1f}, which is tight for expansion, defense, and starbase construction.",
+                recommendation="Check whether any planets can shift toward alloy or biological ship production while protecting basic resource balance.",
+            )
+        )
+
+    research_total = sum(
+        empire.monthly_income.get(key, 0)
+        for key in ["physics_research", "society_research", "engineering_research"]
+    )
+    if empire.empire_size and research_total and research_total / empire.empire_size < 1.5:
+        findings.append(
+            Finding(
+                title="Low research density",
+                severity="medium",
+                detail=f"Total monthly research is about {research_total:.1f} against empire size {empire.empire_size:.1f}.",
+                recommendation="Increase researcher jobs, research stations, and research modifiers without breaking the basic economy.",
+            )
+        )
+
+    return findings
+
+
 def _build_planet_findings(empire: EmpireSummary) -> list[Finding]:
     findings: list[Finding] = []
     for planet in empire.planets:
@@ -460,6 +680,40 @@ def _build_planet_findings(empire: EmpireSummary) -> list[Finding]:
                     severity="medium",
                     detail=f"该星球空余舒适度约为 {_format_number(planet.free_amenities)}。",
                     recommendation="补充维护/服务类岗位或相关建筑，避免稳定度继续下滑。",
+                )
+            )
+    return findings
+
+
+def _build_planet_findings_en(empire: EmpireSummary) -> list[Finding]:
+    findings: list[Finding] = []
+    for planet in empire.planets:
+        label = _format_name(planet.name) or str(planet.planet_id)
+        if planet.stability is not None and planet.stability < 50:
+            findings.append(
+                Finding(
+                    title=f"{label} has low stability",
+                    severity="medium",
+                    detail=f"This planet's stability is about {_format_number(planet.stability)}.",
+                    recommendation="Check housing, amenities, crime/deviancy, jobs, and faction or happiness sources.",
+                )
+            )
+        if planet.free_housing is not None and planet.free_housing < 0:
+            findings.append(
+                Finding(
+                    title=f"{label} lacks housing",
+                    severity="medium",
+                    detail=f"This planet has about {_format_number(planet.free_housing)} free housing.",
+                    recommendation="Consider housing districts/buildings, designation changes, resettlement, or growth controls.",
+                )
+            )
+        if planet.free_amenities is not None and planet.free_amenities < 0:
+            findings.append(
+                Finding(
+                    title=f"{label} lacks amenities",
+                    severity="medium",
+                    detail=f"This planet has about {_format_number(planet.free_amenities)} free amenities.",
+                    recommendation="Add maintenance/service jobs or related buildings before stability drops further.",
                 )
             )
     return findings

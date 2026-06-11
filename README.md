@@ -95,6 +95,15 @@ python -m stellaris_advisor --visibility-mode player_visible "C:\path\to\save.sa
 python -m stellaris_advisor --visibility-mode omniscient "C:\path\to\save.sav"
 ```
 
+Choose report language:
+
+选择报告语言：
+
+```powershell
+python -m stellaris_advisor --language zh "C:\path\to\save.sav"
+python -m stellaris_advisor --language en "C:\path\to\save.sav"
+```
+
 `player_visible` is the default and must not leak hidden AI empire data or undiscovered map information. `omniscient` is reserved for explicit spoiler/debug analysis.
 
 `player_visible` 是默认模式，不应泄露隐藏 AI 帝国数据或未发现地图信息。`omniscient` 仅用于明确的剧透/调试分析。
@@ -141,6 +150,7 @@ docs/
   knowledge-design.md Knowledge/RAG design / 知识库与 RAG 设计
   existing-tools.md   Existing tool survey / 现有工具调研
   visibility-policy.md Player-visibility rules / 玩家可见性规则
+  localization-and-decisions.md Localization and decision advice design / 本地化与决策建议设计
 tests/
   test_save_reader.py MVP tests / MVP 测试
 ```

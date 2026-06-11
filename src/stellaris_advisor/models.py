@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from .report_language import ReportLanguage
 from .visibility import VisibilityMode
 
 
@@ -164,6 +165,7 @@ class Finding:
 @dataclass(slots=True)
 class AdvisorReport:
     visibility_mode: VisibilityMode
+    language: ReportLanguage
     summary: list[str]
     findings: list[Finding]
     next_steps: list[str]

@@ -4,6 +4,7 @@ import argparse
 import sys
 
 from .analyzer import build_report, render_markdown
+from .report_language import ReportLanguage
 from .save_reader import SaveReadError, read_save
 from .visibility import VisibilityMode
 
@@ -17,6 +18,12 @@ def main(argv: list[str] | None = None) -> int:
         default=VisibilityMode.PLAYER_VISIBLE.value,
         help="Information visibility mode. Defaults to player_visible.",
     )
+    parser.add_argument(
+        "--language",
+        choices=[language.value for language in ReportLanguage],
+        default=ReportLanguage.ZH.value,
+        help="Report language. Defaults to zh.",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -25,7 +32,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
-    report = build_report(save, VisibilityMode(args.visibility_mode))
+    report = build_report(
+        save,
+        VisibilityMode(args.visibility_mode),
+        ReportLanguage(args.language),
+    )
     print(render_markdown(report))
     return 0
 
