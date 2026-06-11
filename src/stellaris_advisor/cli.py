@@ -11,6 +11,12 @@ from .advice import (
 )
 from .analyzer import build_report, render_markdown
 from .detail_level import DetailLevel
+from .knowledge import (
+    KnowledgeLoadError,
+    build_knowledge_query,
+    load_knowledge_records,
+    retrieve_knowledge,
+)
 from .report_language import ReportLanguage
 from .save_reader import SaveReadError, read_save
 from .visibility import VisibilityMode
@@ -73,6 +79,17 @@ def main(argv: list[str] | None = None) -> int:
         default=60,
         help="LLM request timeout in seconds. Defaults to 60.",
     )
+    parser.add_argument(
+        "--knowledge-dir",
+        default=None,
+        help="Directory or file containing local RAG knowledge records (.jsonl, .md, .txt).",
+    )
+    parser.add_argument(
+        "--rag-top-k",
+        type=int,
+        default=0,
+        help="Number of local knowledge records to retrieve into --advice prompts. Defaults to 0.",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -91,7 +108,25 @@ def main(argv: list[str] | None = None) -> int:
         print(render_markdown(report))
         return 0
 
-    prompt = build_advice_prompt(report, args.advice_focus)
+    knowledge_hits = []
+    if args.rag_top_k > 0:
+        if not args.knowledge_dir:
+            print("error: --rag-top-k requires --knowledge-dir", file=sys.stderr)
+            return 2
+        try:
+            knowledge_records = load_knowledge_records(args.knowledge_dir)
+        except KnowledgeLoadError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        knowledge_query = build_knowledge_query(report.summary, args.advice_focus)
+        knowledge_hits = retrieve_knowledge(
+            knowledge_records,
+            knowledge_query,
+            version=save.metadata.version,
+            top_k=args.rag_top_k,
+        )
+
+    prompt = build_advice_prompt(report, args.advice_focus, knowledge_hits)
     if args.advice_provider == "prompt":
         print(prompt.render())
         return 0

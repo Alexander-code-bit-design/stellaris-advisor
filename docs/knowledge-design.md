@@ -40,6 +40,28 @@ The advisor should use retrieval-augmented generation instead of fine-tuning as 
    - The LLM receives structured save facts plus short retrieved evidence.
    - The final answer separates facts, inference, and recommendations.
 
+## Current Prototype
+
+The first implemented RAG layer is a dependency-free local retriever:
+
+- load `.jsonl`, `.md`, and `.txt` records from a local directory;
+- preserve source type, title, URL, version, fetched date, topics, confidence, and text;
+- retrieve with lexical scoring plus version/topic/confidence boosts;
+- insert short evidence snippets into the `--advice` prompt when `--knowledge-dir` and `--rag-top-k` are provided.
+
+This is meant to validate the advisor flow before adding web ingestion, embeddings, or a vector database.
+
+## 当前原型
+
+第一版已实现的 RAG 层是零额外依赖的本地检索器：
+
+- 从本地目录读取 `.jsonl`、`.md` 和 `.txt` 记录；
+- 保留来源类型、标题、URL、版本、抓取日期、主题、置信度和正文；
+- 用词法评分叠加版本/主题/置信度权重进行检索；
+- 当命令提供 `--knowledge-dir` 和 `--rag-top-k` 时，把短证据片段插入 `--advice` 提示词。
+
+这一步用于先验证顾问流程，后续再加入网页采集、embedding 或向量数据库。
+
 ## 数据流程
 
 1. 采集资料。

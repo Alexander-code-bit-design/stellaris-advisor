@@ -2,6 +2,7 @@ from pathlib import Path
 
 from stellaris_advisor.advice import build_advice_prompt
 from stellaris_advisor.analyzer import build_report
+from stellaris_advisor.knowledge import KnowledgeHit, KnowledgeRecord
 from stellaris_advisor.report_language import ReportLanguage
 from stellaris_advisor.save_reader import read_save
 from stellaris_advisor.visibility import VisibilityMode
@@ -46,3 +47,28 @@ def test_build_english_advice_prompt_uses_english_structure() -> None:
     assert "Game version: 3.12.5" in rendered
     assert "Findings" not in rendered
     assert "Next Development Steps" not in rendered
+
+
+def test_build_advice_prompt_can_include_retrieved_knowledge() -> None:
+    save = read_save(FIXTURE)
+    report = build_report(save, language=ReportLanguage.EN)
+    hit = KnowledgeHit(
+        record=KnowledgeRecord(
+            record_id="wiki-starbase-cap",
+            source_type="wiki",
+            title="Starbase Capacity",
+            url="https://example.test/starbase",
+            version="3.12",
+            topics=["starbase"],
+            confidence="high",
+            text="Outposts do not use upgraded starbase capacity.",
+        ),
+        score=3.5,
+    )
+
+    prompt = build_advice_prompt(report, knowledge_hits=[hit])
+    rendered = prompt.render()
+
+    assert "Retrieved Knowledge Evidence" in rendered
+    assert "Starbase Capacity" in rendered
+    assert "Outposts do not use upgraded starbase capacity." in rendered

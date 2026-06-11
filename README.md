@@ -28,6 +28,7 @@ The MVP can already:
 - parse owned fleet objects and ship instances, separating mobile fleets from station/base objects;
 - extract player-owned megastructures, ship designs, researched technologies, grouped tradition details, and ascension perks;
 - render common game identifiers as readable labels while preserving raw IDs for later wiki/RAG lookup;
+- retrieve local `.jsonl`, `.md`, and `.txt` knowledge records into advice prompts with version/topic/confidence scoring;
 - generate a Chinese Markdown report with early findings.
 
 当前 MVP 已经能够：
@@ -51,6 +52,7 @@ The MVP can already:
 - 解析玩家拥有的 fleet 对象和舰船实例，区分机动舰队与空间站/基地对象；
 - 提取玩家拥有的巨型结构、舰船设计、已研究科技、按传统树分组的传统明细和飞升天赋；
 - 将常见游戏 ID 渲染为更可读的名称，同时保留原始 ID 供后续 wiki/RAG 检索使用；
+- 将本地 `.jsonl`、`.md` 和 `.txt` 知识记录按版本/主题/置信度检索后插入 advice prompt；
 - 生成中文 Markdown 局势报告和基础问题提示。
 
 ## Design Philosophy / 设计思路
@@ -169,6 +171,15 @@ python -m stellaris_advisor --advice --advice-provider openai-compatible "C:\pat
 
 The first advice version uses only parsed save facts. Wiki, patch-note, and community retrieval are still planned as a later RAG layer, so mechanic-specific advice should be treated as provisional.
 
+You can also add local retrieval evidence to the generated prompt:
+
+```powershell
+python -m stellaris_advisor --advice --language zh --detail-level full --knowledge-dir examples/knowledge --rag-top-k 3 "C:\path\to\save.sav"
+python -m stellaris_advisor --advice --language en --detail-level full --knowledge-dir examples/knowledge --rag-top-k 3 "C:\path\to\save.sav"
+```
+
+The current RAG layer is intentionally dependency-free. It loads `.jsonl`, `.md`, and `.txt` files from a local knowledge directory, scores records with lexical retrieval plus version/topic/confidence boosts, and inserts short evidence snippets into the advice prompt. `examples/knowledge/starter.jsonl` is only a small local test corpus, not a complete wiki mirror.
+
 现阶段已经可以把读取器输出变成可复制给大模型的顾问提示词：
 
 ```powershell
@@ -201,6 +212,15 @@ python -m stellaris_advisor --advice --advice-provider openai-compatible "C:\pat
 ```
 
 第一版建议只基于已经解析出的存档事实。Wiki、补丁说明、社区讨论的检索增强层还在后续计划中，因此涉及具体机制强度的建议应视为待验证。
+
+也可以把本地检索证据加入生成的提示词：
+
+```powershell
+python -m stellaris_advisor --advice --language zh --detail-level full --knowledge-dir examples/knowledge --rag-top-k 3 "C:\path\to\save.sav"
+python -m stellaris_advisor --advice --language en --detail-level full --knowledge-dir examples/knowledge --rag-top-k 3 "C:\path\to\save.sav"
+```
+
+当前 RAG 层刻意保持零额外依赖。它会从本地知识库目录读取 `.jsonl`、`.md` 和 `.txt` 文件，用词法检索加版本/主题/置信度权重排序，并把短证据片段插入 advice prompt。`examples/knowledge/starter.jsonl` 只是用于验证管线的小型本地语料，不是完整 wiki 镜像。
 
 ## MVP Goals / MVP 目标
 

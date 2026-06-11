@@ -6,6 +6,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 
+from .knowledge import KnowledgeHit, render_knowledge_evidence
 from .models import AdvisorReport
 from .report_language import ReportLanguage
 from .visibility import VisibilityMode
@@ -29,10 +30,18 @@ class AdvicePrompt:
         )
 
 
-def build_advice_prompt(report: AdvisorReport, focus: str | None = None) -> AdvicePrompt:
+def build_advice_prompt(
+    report: AdvisorReport,
+    focus: str | None = None,
+    knowledge_hits: list[KnowledgeHit] | None = None,
+) -> AdvicePrompt:
     is_en = report.language is ReportLanguage.EN
     system = _english_system_prompt(report) if is_en else _chinese_system_prompt(report)
-    user = _english_user_prompt(report, focus) if is_en else _chinese_user_prompt(report, focus)
+    user = (
+        _english_user_prompt(report, focus, knowledge_hits or [])
+        if is_en
+        else _chinese_user_prompt(report, focus, knowledge_hits or [])
+    )
     return AdvicePrompt(system=system, user=user)
 
 
@@ -103,6 +112,7 @@ def _chinese_system_prompt(report: AdvisorReport) -> str:
 - 恒星基地容量只统计升级后的恒星基地；普通前哨站不占恒星基地容量。报告会分开给出恒星基地总数和容量占用，只能根据“容量占用/上限”判断是否超限。
 - 建议要可执行，按优先级排列，并尽量说明为什么。避免只给“补经济/补舰队/补科研”的泛泛建议。
 - 对具体机制建议要考虑游戏版本；如果版本信息不足或知识可能过期，必须提示需要版本化 wiki/RAG 验证。
+- 如果提供了“检索到的知识证据”，机制建议必须优先引用这些证据；不要把低置信度社区意见当成机制事实。
 - 优先使用群星中文标准译名；不确定译名时保留英文 key 或说“译名待验证”，不要自造译名。例如 ascension_perk eternal_vigilance 的中文标准译名是“戒心永存”，不是“永恒警戒”。
 - 回答风格应接近群星帝国顾问/内阁简报：有一点游戏内文本气质，但不要编造剧情、角色或隐藏情报。
 - 不要把完整 gamestate、隐藏 AI 帝国情报、未发现星系或剧透信息写入回答。
@@ -123,15 +133,24 @@ Rules:
 - Starbase capacity counts upgraded starbases, not ordinary outposts. The report separates total owned starbase objects from capacity usage; judge over-capacity only from "capacity used / cap".
 - Make advice actionable, prioritized, and explain why. Avoid generic "improve economy/research/fleet" advice.
 - Treat mechanic-specific advice as version-sensitive; if version knowledge may be stale, say that version-tagged wiki/RAG validation is needed.
+- If retrieved knowledge evidence is provided, use it before relying on general memory; do not treat low-confidence community opinions as mechanical facts.
 - Use standard Stellaris terms. If a localized term is uncertain, keep the raw English key or mark it as needing localization validation.
 - Write like a Stellaris imperial council briefing: atmospheric but factual; do not invent lore, characters, hidden intelligence, or spoilers.
 - Do not include full gamestate content, hidden AI intelligence, undiscovered systems, or spoilers.
 """
 
 
-def _chinese_user_prompt(report: AdvisorReport, focus: str | None) -> str:
+def _chinese_user_prompt(
+    report: AdvisorReport, focus: str | None, knowledge_hits: list[KnowledgeHit]
+) -> str:
     rendered_report = _render_fact_summary(report)
+    rendered_knowledge = render_knowledge_evidence(knowledge_hits, language="zh")
     focus_line = focus or "请给出当前局势评估、主要风险、经济/科研/传统/舰队优先级，以及接下来 10 年的行动计划。"
+    knowledge_section = (
+        f"\n\n{rendered_knowledge}\n"
+        if rendered_knowledge
+        else "\n\n## 检索到的知识证据\n\n- 未提供；涉及机制强度、版本变化或标准译名时请标注需要版本化 wiki/RAG 验证。\n"
+    )
     return f"""
 下面是 Stellaris Advisor 从玩家存档中解析出的事实摘要。
 
@@ -156,12 +175,21 @@ def _chinese_user_prompt(report: AdvisorReport, focus: str | None) -> str:
 
 存档事实摘要：
 {rendered_report}
+{knowledge_section}
 """
 
 
-def _english_user_prompt(report: AdvisorReport, focus: str | None) -> str:
+def _english_user_prompt(
+    report: AdvisorReport, focus: str | None, knowledge_hits: list[KnowledgeHit]
+) -> str:
     rendered_report = _render_fact_summary(report)
+    rendered_knowledge = render_knowledge_evidence(knowledge_hits, language="en")
     focus_line = focus or "Assess the current situation, major risks, economy/research/tradition/fleet priorities, and a 10-year action plan."
+    knowledge_section = (
+        f"\n\n{rendered_knowledge}\n"
+        if rendered_knowledge
+        else "\n\n## Retrieved Knowledge Evidence\n\n- None provided; mark mechanics, version changes, and localization as needing version-tagged wiki/RAG validation when relevant.\n"
+    )
     return f"""
 Below is a factual save summary parsed by Stellaris Advisor.
 
@@ -186,6 +214,7 @@ Reply in English using this structure:
 
 Factual save summary:
 {rendered_report}
+{knowledge_section}
 """
 
 
