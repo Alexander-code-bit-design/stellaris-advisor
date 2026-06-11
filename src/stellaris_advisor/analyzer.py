@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .display_names import compact_name, display_name
 from .models import AdvisorReport, EmpireSummary, Finding, SaveGame
 from .visibility import VisibilityMode
 
@@ -20,17 +21,17 @@ def build_report(
         summary.extend(
             [
                 f"玩家帝国: {empire.name or '未知'}",
-                f"政体/权力: {_format_value(empire.government_type)} / {_format_value(empire.authority)}",
-                f"起源: {_format_value(empire.origin)}",
-                f"思潮: {_format_list(empire.ethics)}",
-                f"国民理念: {_format_list(empire.civics)}",
-                f"传统组: {_format_list(empire.tradition_categories)}",
+                f"政体/权力: {_format_id_value(empire.government_type)} / {_format_id_value(empire.authority)}",
+                f"起源: {_format_id_value(empire.origin)}",
+                f"思潮: {_format_id_list(empire.ethics)}",
+                f"国民理念: {_format_id_list(empire.civics)}",
+                f"传统组: {_format_id_list(empire.tradition_categories)}",
                 f"已选传统数: {len(empire.traditions)}",
                 f"传统明细: {_format_tradition_details(empire)}",
-                f"飞升: {_format_list(empire.ascension_perks)}",
-                f"当前议程: {_format_value(empire.council_agenda)} ({_format_number(empire.council_agenda_progress)})",
-                f"启用法令: {_format_list(empire.edicts)}",
-                f"政策标记: {_format_list(empire.policy_flags, limit=6)}",
+                f"飞升: {_format_id_list(empire.ascension_perks)}",
+                f"当前议程: {_format_id_value(empire.council_agenda)} ({_format_number(empire.council_agenda_progress)})",
+                f"启用法令: {_format_id_list(empire.edicts)}",
+                f"政策标记: {_format_id_list(empire.policy_flags, limit=6)}",
                 f"领袖数量: {len(empire.leaders) or len(empire.owned_leaders)}",
                 f"领袖概览: {_format_leaders(empire)}",
                 f"派系状态: {_format_faction_status(empire)}",
@@ -175,10 +176,33 @@ def _format_value(value: object) -> str:
     return str(value)
 
 
+def _format_id_value(value: object) -> str:
+    if value is None or value == "":
+        return "未知"
+    return display_name(value)
+
+
+def _format_name(value: object) -> str | None:
+    if value is None or value == "":
+        return None
+    text = str(value)
+    if text.startswith(("NAME_", "SPEC_")):
+        return compact_name(text)
+    return text
+
+
 def _format_list(values: list[object], limit: int = 8) -> str:
     if not values:
         return "未知"
     shown = [str(value) for value in values[:limit]]
+    suffix = f" (+{len(values) - limit})" if len(values) > limit else ""
+    return ", ".join(shown) + suffix
+
+
+def _format_id_list(values: list[object], limit: int = 8) -> str:
+    if not values:
+        return "未知"
+    shown = [display_name(value) for value in values[:limit]]
     suffix = f" (+{len(values) - limit})" if len(values) > limit else ""
     return ", ".join(shown) + suffix
 
@@ -200,7 +224,7 @@ def _format_leaders(empire: EmpireSummary, limit: int = 6) -> str:
         return "尚未解析详情"
     parts = []
     for leader in empire.leaders[:limit]:
-        traits = f"; {', '.join(leader.traits[:2])}" if leader.traits else ""
+        traits = f"; {', '.join(compact_name(trait) for trait in leader.traits[:2])}" if leader.traits else ""
         location = ""
         if leader.location_type:
             location = f"; {leader.location_type}"
@@ -210,7 +234,7 @@ def _format_leaders(empire: EmpireSummary, limit: int = 6) -> str:
         if leader.council_position_id is not None:
             council = f"; council {leader.council_position_id}"
         parts.append(
-            f"{leader.name or leader.leader_id} ({leader.leader_class or 'unknown'} L{_format_number(leader.level)}{location}{council}{traits})"
+            f"{_format_name(leader.name) or leader.leader_id} ({leader.leader_class or 'unknown'} L{_format_number(leader.level)}{location}{council}{traits})"
         )
     suffix = f" (+{len(empire.leaders) - limit})" if len(empire.leaders) > limit else ""
     return " | ".join(parts) + suffix
@@ -222,7 +246,7 @@ def _format_planets(empire: EmpireSummary, limit: int = 6) -> str:
     parts = []
     for planet in empire.planets[:limit]:
         stats = [
-            planet.planet_class or "unknown",
+            compact_name(planet.planet_class) if planet.planet_class else "unknown",
             f"size {_format_number(planet.planet_size)}",
             f"pops {_format_number(planet.num_sapient_pops)}",
             f"stab {_format_number(planet.stability)}",
@@ -230,8 +254,8 @@ def _format_planets(empire: EmpireSummary, limit: int = 6) -> str:
             f"amen {_format_number(planet.free_amenities)}",
         ]
         if planet.designation:
-            stats.append(planet.designation)
-        parts.append(f"{planet.name or planet.planet_id} ({', '.join(stats)})")
+            stats.append(compact_name(planet.designation))
+        parts.append(f"{_format_name(planet.name) or planet.planet_id} ({', '.join(stats)})")
     suffix = f" (+{len(empire.planets) - limit})" if len(empire.planets) > limit else ""
     return " | ".join(parts) + suffix
 
@@ -241,13 +265,21 @@ def _format_starbases(empire: EmpireSummary, limit: int = 6) -> str:
         return "尚未解析详情"
     parts = []
     for starbase in empire.starbases[:limit]:
-        system = starbase.system_name or (
+        system = _format_name(starbase.system_name) or (
             f"system {starbase.system_id}" if starbase.system_id is not None else "unknown system"
         )
-        modules = f"; modules {', '.join(starbase.modules[:3])}" if starbase.modules else ""
-        buildings = f"; buildings {', '.join(starbase.buildings[:2])}" if starbase.buildings else ""
+        modules = (
+            f"; modules {', '.join(compact_name(module) for module in starbase.modules[:3])}"
+            if starbase.modules
+            else ""
+        )
+        buildings = (
+            f"; buildings {', '.join(compact_name(building) for building in starbase.buildings[:2])}"
+            if starbase.buildings
+            else ""
+        )
         parts.append(
-            f"{system} ({starbase.level or 'unknown'}, power {_format_number(starbase.military_power)}{modules}{buildings})"
+            f"{system} ({compact_name(starbase.level) if starbase.level else 'unknown'}, power {_format_number(starbase.military_power)}{modules}{buildings})"
         )
     suffix = f" (+{len(empire.starbases) - limit})" if len(empire.starbases) > limit else ""
     return " | ".join(parts) + suffix
@@ -262,8 +294,8 @@ def _format_megastructures(empire: EmpireSummary, limit: int = 6) -> str:
         if megastructure.system_id is not None:
             location = f", system {megastructure.system_id}"
         parts.append(
-            f"{megastructure.name or megastructure.megastructure_id} "
-            f"({_format_value(megastructure.megastructure_type)}{location})"
+            f"{_format_name(megastructure.name) or megastructure.megastructure_id} "
+            f"({_format_id_value(megastructure.megastructure_type)}{location})"
         )
     suffix = (
         f" (+{len(empire.megastructures) - limit})"
@@ -282,13 +314,13 @@ def _format_ship_designs(empire: EmpireSummary, limit: int = 6) -> str:
     for design in empire.ship_designs[:limit]:
         mode = "auto" if design.auto_generated else "manual"
         components = (
-            f"; components {', '.join(design.component_templates[:3])}"
+            f"; components {', '.join(compact_name(component) for component in design.component_templates[:3])}"
             if design.component_templates
             else ""
         )
         parts.append(
-            f"{design.name or design.design_id} "
-            f"({_format_value(design.ship_size)}, {mode}{components})"
+            f"{_format_name(design.name) or design.design_id} "
+            f"({compact_name(design.ship_size) if design.ship_size else 'unknown'}, {mode}{components})"
         )
     suffix = f" (+{len(empire.ship_designs) - limit})" if len(empire.ship_designs) > limit else ""
     return " | ".join(parts) + suffix
@@ -297,7 +329,7 @@ def _format_ship_designs(empire: EmpireSummary, limit: int = 6) -> str:
 def _format_technologies(empire: EmpireSummary, limit: int = 10) -> str:
     if not empire.technologies:
         return "尚未解析"
-    shown = list(empire.technologies.keys())[:limit]
+    shown = [display_name(tech) for tech in list(empire.technologies.keys())[:limit]]
     suffix = f" (+{len(empire.technologies) - limit})" if len(empire.technologies) > limit else ""
     return f"{len(empire.technologies)} 项: " + ", ".join(shown) + suffix
 
@@ -311,7 +343,7 @@ def _format_tradition_details(empire: EmpireSummary, limit: int = 6) -> str:
         grouped.setdefault(tree, []).append(tradition)
     parts = []
     for tree, traditions in grouped.items():
-        shown = ", ".join(traditions[:limit])
+        shown = ", ".join(display_name(tradition) for tradition in traditions[:limit])
         suffix = f" (+{len(traditions) - limit})" if len(traditions) > limit else ""
         parts.append(f"{tree}: {shown}{suffix}")
     return " | ".join(parts)
@@ -402,7 +434,7 @@ def _build_empire_findings(empire: EmpireSummary) -> list[Finding]:
 def _build_planet_findings(empire: EmpireSummary) -> list[Finding]:
     findings: list[Finding] = []
     for planet in empire.planets:
-        label = planet.name or str(planet.planet_id)
+        label = _format_name(planet.name) or str(planet.planet_id)
         if planet.stability is not None and planet.stability < 50:
             findings.append(
                 Finding(

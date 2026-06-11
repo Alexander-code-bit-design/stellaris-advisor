@@ -21,6 +21,7 @@ The MVP can already:
 - map owned planet IDs to first-pass planet details, including planet class, size, pops, stability, crime/deviancy, amenities, housing, designation, districts, building cache IDs, production, upkeep, and net output;
 - map owned starbases to systems, levels, modules, buildings, station fleets, and military power;
 - extract player-owned megastructures, ship designs, researched technologies, grouped tradition details, and ascension perks;
+- render common game identifiers as readable labels while preserving raw IDs for later wiki/RAG lookup;
 - generate a Chinese Markdown report with early findings.
 
 当前 MVP 已经能够：
@@ -37,6 +38,7 @@ The MVP can already:
 - 将拥有的星球 ID 映射到第一批星球详情，包括星球类型、大小、人口、稳定度、犯罪/偏差、舒适度、住房、定位、区划、建筑缓存 ID、产出、维护和净产出；
 - 将玩家拥有的恒星基地映射到星系、等级、模块、建筑、基地舰队和军事实力；
 - 提取玩家拥有的巨型结构、舰船设计、已研究科技、按传统树分组的传统明细和飞升天赋；
+- 将常见游戏 ID 渲染为更可读的名称，同时保留原始 ID 供后续 wiki/RAG 检索使用；
 - 生成中文 Markdown 局势报告和基础问题提示。
 
 ## Design Philosophy / 设计思路
