@@ -290,7 +290,31 @@ galactic_object=
     77=
     {
         name={ key="Test System" }
+        star_class="sc_g"
+        discovery={ 0 }
+        hyperlane=
+        {
+            { to=88 length=12 }
+            { to=99 length=20 bridge=yes }
+        }
         starbases={ 5 6 }
+        colonies={ 3 }
+        bypasses={ 1 }
+    }
+    88=
+    {
+        name={ key="Border System" }
+        star_class="sc_m"
+        discovery={ 0 }
+        hyperlane=
+        {
+            { to=77 length=12 }
+            { to=100 length=30 }
+        }
+    }
+    99=
+    {
+        name={ key="Hidden Neighbor" }
     }
 }
 starbase_mgr=
@@ -465,6 +489,16 @@ leaders=
     assert empire.first_contacts[0].country_id == 43
     assert empire.first_contacts[0].status == "in_progress"
     assert empire.first_contacts[0].clues == 3
+    assert len(empire.known_systems) == 2
+    assert empire.known_systems[0].system_id == 77
+    assert empire.known_systems[0].name == "Test System"
+    assert empire.known_systems[0].discovered is True
+    assert empire.known_systems[0].star_class == "sc_g"
+    assert empire.known_systems[0].starbase_ids == [5, 6]
+    assert empire.known_systems[0].colonies == [3]
+    assert empire.known_systems[0].bypass_ids == [1]
+    assert [lane.to_system_id for lane in empire.known_systems[0].hyperlanes] == [88, 99]
+    assert empire.known_systems[0].hyperlanes[1].bridge is True
     assert empire.owned_leaders == [10, 11, 12]
     assert len(empire.leaders) == 2
     assert empire.leaders[0].name == "Leader One"
@@ -507,7 +541,9 @@ leaders=
     english_markdown = render_markdown(build_report(save, language=ReportLanguage.EN))
     assert "Starbases: total 2; capacity used 1 / 5" in english_markdown
     assert "外交/接触: 关系 2，已通信 1，敌对 0，接壤 1，进行中首次接触 1" in markdown
+    assert "可见星图/航道: 已知/相关星系 2，有星港 1，首次接触位置 1，外缘航道候选 2" in markdown
     assert "Diplomacy/contacts: relations 2, communications 1, hostile 0, border contacts 1, active first contacts 1" in english_markdown
+    assert "Known map/hyperlanes: known/relevant systems 2, starbase systems 1, first-contact locations 1, frontier link candidates 2" in english_markdown
     assert len(empire.megastructures) == 1
     assert empire.megastructures[0].megastructure_type == "grand_archive_0"
     assert empire.megastructures[0].system_id == 77

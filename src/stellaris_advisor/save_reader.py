@@ -11,6 +11,7 @@ from .clausewitz import (
     extract_top_level_block,
     find_all_scalars,
     find_scalar,
+    iter_anonymous_blocks,
     iter_named_blocks,
     iter_numbered_blocks,
     parse_indexed_value_block,
@@ -27,6 +28,7 @@ from .models import (
     EmpireSummary,
     FleetSummary,
     FirstContactSummary,
+    HyperlaneSummary,
     LeaderSummary,
     MegastructureSummary,
     OpinionModifierSummary,
@@ -36,6 +38,7 @@ from .models import (
     ShipSummary,
     ShipDesignSummary,
     StarbaseSummary,
+    SystemSummary,
 )
 
 
@@ -150,6 +153,9 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
         str(item) for item in find_all_scalars(ethos_block, "ethic")
     ]
 
+    starbases = _extract_starbases(gamestate_text, owned_fleets)
+    first_contacts = _extract_first_contacts(gamestate_text, country_id)
+
     return EmpireSummary(
         country_id=country_id,
         name=_extract_localized_name(country_block),
@@ -182,12 +188,19 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
         owned_fleets=owned_fleets,
         fleets=_extract_fleets(gamestate_text, owned_fleets),
         starbase_capacity=_as_optional_int(find_scalar(country_block, "starbase_capacity")),
-        starbases=_extract_starbases(gamestate_text, owned_fleets),
+        starbases=starbases,
         megastructures=_extract_megastructures(gamestate_text, country_id),
         ship_design_ids=ship_design_ids,
         ship_designs=_extract_ship_designs(gamestate_text, ship_design_ids),
         diplomatic_relations=_extract_diplomatic_relations(relations_manager_block, gamestate_text),
-        first_contacts=_extract_first_contacts(gamestate_text, country_id),
+        first_contacts=first_contacts,
+        known_systems=_extract_known_systems(
+            gamestate_text,
+            country_id,
+            owned_planets,
+            starbases,
+            first_contacts,
+        ),
         technologies=_extract_technologies(country_block),
         monthly_income=monthly_income,
         fleet_size=_as_optional_float(find_scalar(country_block, "fleet_size")),
@@ -286,6 +299,80 @@ def _extract_first_contacts(gamestate_text: str, player_country_id: int) -> list
             )
         )
     return contacts
+
+
+def _extract_known_systems(
+    gamestate_text: str,
+    player_country_id: int,
+    owned_planets: list[int],
+    starbases: list[StarbaseSummary],
+    first_contacts: list[FirstContactSummary],
+) -> list[SystemSummary]:
+    galactic_objects = extract_top_level_block(gamestate_text, "galactic_object") or ""
+    if not galactic_objects:
+        return []
+
+    anchor_system_ids = {
+        starbase.system_id for starbase in starbases if starbase.system_id is not None
+    }
+    anchor_system_ids.update(
+        contact.location_id for contact in first_contacts if contact.location_id is not None
+    )
+    systems: list[SystemSummary] = []
+    for system_id, system_block in iter_numbered_blocks(galactic_objects):
+        discovery_block = extract_block(system_block, "discovery") or ""
+        discovered = player_country_id in parse_int_list_block(discovery_block)
+        system_planets = [
+            int(item)
+            for item in find_all_scalars(system_block, "planet")
+            if _as_optional_int(item) is not None
+        ]
+        has_owned_planet = any(planet_id in owned_planets for planet_id in system_planets)
+        if not discovered and system_id not in anchor_system_ids and not has_owned_planet:
+            continue
+
+        starbases_block = extract_block(system_block, "starbases")
+        colonies_block = extract_block(system_block, "colonies")
+        fleet_presence_block = extract_block(system_block, "fleet_presence")
+        bypasses_block = extract_block(system_block, "bypasses")
+        systems.append(
+            SystemSummary(
+                system_id=system_id,
+                name=_extract_localized_name(system_block),
+                star_class=_as_optional_str(find_scalar(system_block, "star_class")),
+                discovered=discovered,
+                sector_id=_as_optional_int(find_scalar(system_block, "sector")),
+                starbase_ids=[
+                    item for item in parse_int_list_block(starbases_block or "") if item != 4294967295
+                ],
+                colonies=[
+                    item for item in parse_int_list_block(colonies_block or "") if item != 4294967295
+                ],
+                fleet_ids=parse_int_list_block(fleet_presence_block or ""),
+                bypass_ids=[
+                    item for item in parse_int_list_block(bypasses_block or "") if item != 4294967295
+                ],
+                hyperlanes=_extract_hyperlanes(system_block),
+            )
+        )
+    return systems
+
+
+def _extract_hyperlanes(system_block: str) -> list[HyperlaneSummary]:
+    hyperlane_block = extract_block(system_block, "hyperlane") or ""
+    hyperlanes: list[HyperlaneSummary] = []
+    for lane_block in iter_anonymous_blocks(hyperlane_block):
+        to_system_id = _as_optional_int(find_scalar(lane_block, "to"))
+        if to_system_id is None or to_system_id == 4294967295:
+            continue
+        hyperlanes.append(
+            HyperlaneSummary(
+                to_system_id=to_system_id,
+                length=_as_optional_float(find_scalar(lane_block, "length")),
+                bridge=_as_optional_bool(find_scalar(lane_block, "bridge")),
+            )
+        )
+    return hyperlanes
 
 
 def _extract_fleets(gamestate_text: str, owned_fleets: list[int]) -> list[FleetSummary]:

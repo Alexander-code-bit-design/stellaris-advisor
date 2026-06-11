@@ -193,6 +193,46 @@ def iter_named_blocks(text: str, key: str) -> Iterator[str]:
         index += 1
 
 
+def iter_anonymous_blocks(text: str) -> Iterator[str]:
+    """Yield top-level anonymous `{...}` blocks from a parent block."""
+    index = 0
+    depth = 0
+    in_string = False
+    escaped = False
+    while index < len(text):
+        char = text[index]
+        if in_string:
+            if char == "\\" and not escaped:
+                escaped = True
+                index += 1
+                continue
+            if char == '"' and not escaped:
+                in_string = False
+            escaped = False
+            index += 1
+            continue
+
+        if char == '"':
+            in_string = True
+            index += 1
+            continue
+        if char == "{":
+            if depth == 0:
+                close_index = find_matching_brace(text, index)
+                yield text[index + 1 : close_index]
+                index = close_index + 1
+                continue
+            depth += 1
+            index += 1
+            continue
+        if char == "}":
+            depth -= 1
+            index += 1
+            continue
+
+        index += 1
+
+
 def find_matching_brace(text: str, open_index: int) -> int:
     depth = 0
     in_string = False

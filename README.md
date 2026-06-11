@@ -17,6 +17,7 @@ The MVP can already:
 - extract first-pass empire identity fields, including ethics, civics, authority, government type, origin, traditions, ascension perks, edicts, policy flags, council agenda, and owned leader IDs;
 - detect whether pop factions are applicable, unavailable for gestalt empires, or applicable but not yet formed;
 - extract player-visible diplomatic relations and first-contact progress, including communications, hostile/border flags, opinion values, trust, threat, and active first contacts;
+- extract first-pass player-visible known systems and hyperlanes from `galactic_object`, including owned starbase systems, colony systems, first-contact locations, bypasses, and frontier hyperlane candidates;
 - fall back to summing current-month income entries when a save lacks a precomputed monthly resource summary;
 - map owned leader IDs to first-pass leader details, including name localization keys, class, level, age, job, ethic, traits, location, and council position;
 - map owned planet IDs to first-pass planet details, including planet class, size, pops, stability, crime/deviancy, amenities, housing, designation, districts, building cache IDs, production, upkeep, and net output;
@@ -37,6 +38,7 @@ The MVP can already:
 - 提取第一批帝国身份信息，包括思潮、国民理念、权力制度、政体、起源、传统、飞升、法令、政策标记、内阁议程和拥有的领袖 ID；
 - 判断派系是否适用、格式塔是否不适用，或普通政体是否尚未形成派系；
 - 提取玩家可见的外交关系和首次接触进度，包括是否已通信、敌对/接壤标记、关系值、信任、威胁和进行中的首次接触；
+- 从 `galactic_object` 提取第一版玩家可见星系和超空间航道，包括拥有星港的星系、殖民地星系、首次接触位置、旁路和外缘航道候选；
 - 当存档没有预先汇总的月收入时，回退为累加当月收入分项；
 - 将拥有的领袖 ID 映射到第一批领袖详情，包括姓名本地化 key、职业、等级、年龄、岗位、思潮、特质、位置和内阁席位；
 - 将拥有的星球 ID 映射到第一批星球详情，包括星球类型、大小、人口、稳定度、犯罪/偏差、舒适度、住房、定位、区划、建筑缓存 ID、产出、维护和净产出；

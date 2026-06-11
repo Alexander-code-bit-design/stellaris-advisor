@@ -43,6 +43,7 @@ def build_report(
                 f"领袖数量: {len(empire.leaders) or len(empire.owned_leaders)}",
                 f"派系状态: {_format_faction_status(empire)}",
                 f"外交/接触: {_format_diplomacy(empire)}",
+                f"可见星图/航道: {_format_known_map(empire)}",
                 f"殖民地数量: {len(empire.planets) or len(empire.owned_planets)}",
                 f"星球概览: {_format_planets(empire)}",
                 f"恒星基地: {_format_starbase_count(empire)}",
@@ -60,7 +61,7 @@ def build_report(
             ]
         )
         if detail_level is not DetailLevel.SUMMARY:
-            summary.insert(22, f"领袖概览: {_format_leaders(empire, detail_level)}")
+            summary.insert(23, f"领袖概览: {_format_leaders(empire, detail_level)}")
         if empire.monthly_income:
             summary.append(f"月收入概览: {_format_resources(empire.monthly_income)}")
         if detail_level is DetailLevel.FULL:
@@ -162,6 +163,7 @@ def _build_english_report(
                 f"Leaders: {len(empire.leaders) or len(empire.owned_leaders)}",
                 f"Faction status: {_format_faction_status_en(empire)}",
                 f"Diplomacy/contacts: {_format_diplomacy_en(empire)}",
+                f"Known map/hyperlanes: {_format_known_map_en(empire)}",
                 f"Colonies: {len(empire.planets) or len(empire.owned_planets)}",
                 f"Planet overview: {_format_planets_en(empire)}",
                 f"Starbases: {_format_starbase_count_en(empire)}",
@@ -179,7 +181,7 @@ def _build_english_report(
             ]
         )
         if detail_level is not DetailLevel.SUMMARY:
-            summary.insert(22, f"Leader overview: {_format_leaders_en(empire, detail_level)}")
+            summary.insert(23, f"Leader overview: {_format_leaders_en(empire, detail_level)}")
         if empire.monthly_income:
             summary.append(f"Monthly income: {_format_resources(empire.monthly_income)}")
         if detail_level is DetailLevel.FULL:
@@ -423,6 +425,45 @@ def _format_diplomacy_en(empire: EmpireSummary) -> str:
     return (
         f"relations {relation_count}, communications {communications}, hostile {hostile}, "
         f"border contacts {borders}, active first contacts {active_first_contacts}"
+    )
+
+
+def _format_known_map(empire: EmpireSummary) -> str:
+    if not empire.known_systems:
+        return "尚未解析"
+    known_ids = {system.system_id for system in empire.known_systems}
+    starbase_systems = sum(1 for system in empire.known_systems if system.starbase_ids)
+    first_contact_locations = {
+        contact.location_id for contact in empire.first_contacts if contact.location_id is not None
+    }
+    frontier_links = _frontier_hyperlane_count(empire, known_ids)
+    return (
+        f"已知/相关星系 {len(empire.known_systems)}，有星港 {starbase_systems}，"
+        f"首次接触位置 {len(first_contact_locations)}，外缘航道候选 {frontier_links}"
+    )
+
+
+def _format_known_map_en(empire: EmpireSummary) -> str:
+    if not empire.known_systems:
+        return "not parsed"
+    known_ids = {system.system_id for system in empire.known_systems}
+    starbase_systems = sum(1 for system in empire.known_systems if system.starbase_ids)
+    first_contact_locations = {
+        contact.location_id for contact in empire.first_contacts if contact.location_id is not None
+    }
+    frontier_links = _frontier_hyperlane_count(empire, known_ids)
+    return (
+        f"known/relevant systems {len(empire.known_systems)}, starbase systems {starbase_systems}, "
+        f"first-contact locations {len(first_contact_locations)}, frontier link candidates {frontier_links}"
+    )
+
+
+def _frontier_hyperlane_count(empire: EmpireSummary, known_ids: set[int]) -> int:
+    return sum(
+        1
+        for system in empire.known_systems
+        for lane in system.hyperlanes
+        if lane.to_system_id not in known_ids
     )
 
 
@@ -678,6 +719,7 @@ def _format_full_detail_lines(empire: EmpireSummary) -> list[str]:
     return [
         f"领袖细节: {_format_leader_details(empire)}",
         f"外交/接触细节: {_format_diplomacy_details(empire)}",
+        f"可见星图/航道细节: {_format_known_map_details(empire)}",
         f"舰队实例细节: {_format_fleet_details(empire)}",
         f"恒星基地细节: {_format_starbase_details(empire)}",
         f"星球建筑/区划细节: {_format_planet_details(empire)}",
@@ -689,6 +731,7 @@ def _format_full_detail_lines_en(empire: EmpireSummary) -> list[str]:
     return [
         f"Leader details: {_format_leader_details(empire)}",
         f"Diplomacy/contact details: {_format_diplomacy_details(empire)}",
+        f"Known map/hyperlane details: {_format_known_map_details(empire)}",
         f"Fleet instance details: {_format_fleet_details(empire)}",
         f"Starbase details: {_format_starbase_details(empire)}",
         f"Planet building/district details: {_format_planet_details(empire)}",
@@ -763,6 +806,34 @@ def _format_diplomacy_details(empire: EmpireSummary, limit: int = 20) -> str:
     relation_text = " | ".join(parts) + relation_suffix if parts else "relations not parsed"
     contact_text = " | ".join(contact_parts) + contact_suffix if contact_parts else "first contacts not parsed"
     return f"relations: {relation_text}; first contacts: {contact_text}"
+
+
+def _format_known_map_details(empire: EmpireSummary, limit: int = 30) -> str:
+    if not empire.known_systems:
+        return "not parsed"
+    known_ids = {system.system_id for system in empire.known_systems}
+    parts = []
+    for system in empire.known_systems[:limit]:
+        lanes = ", ".join(
+            f"{lane.to_system_id}{'*' if lane.to_system_id not in known_ids else ''}"
+            for lane in system.hyperlanes
+        ) or "none"
+        flags = []
+        if system.discovered:
+            flags.append("discovered")
+        if system.starbase_ids:
+            flags.append(f"starbases {','.join(str(item) for item in system.starbase_ids)}")
+        if system.colonies:
+            flags.append(f"colonies {','.join(str(item) for item in system.colonies)}")
+        if system.bypass_ids:
+            flags.append(f"bypasses {','.join(str(item) for item in system.bypass_ids)}")
+        parts.append(
+            f"{system.system_id} {_format_name(system.name) or 'unknown'}: "
+            f"{compact_name(system.star_class) if system.star_class else 'unknown'}, "
+            f"{'; '.join(flags) or 'no flags'}, lanes {lanes}"
+        )
+    suffix = f" (+{len(empire.known_systems) - limit})" if len(empire.known_systems) > limit else ""
+    return " | ".join(parts) + suffix
 
 
 def _format_fleet_counts(empire: EmpireSummary) -> str:

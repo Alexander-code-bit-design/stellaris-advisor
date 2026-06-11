@@ -193,6 +193,27 @@ class FirstContactSummary:
 
 
 @dataclass(slots=True)
+class HyperlaneSummary:
+    to_system_id: int
+    length: float | None = None
+    bridge: bool | None = None
+
+
+@dataclass(slots=True)
+class SystemSummary:
+    system_id: int
+    name: str | None = None
+    star_class: str | None = None
+    discovered: bool | None = None
+    sector_id: int | None = None
+    starbase_ids: list[int] = field(default_factory=list)
+    colonies: list[int] = field(default_factory=list)
+    fleet_ids: list[int] = field(default_factory=list)
+    bypass_ids: list[int] = field(default_factory=list)
+    hyperlanes: list[HyperlaneSummary] = field(default_factory=list)
+
+
+@dataclass(slots=True)
 class EmpireSummary:
     country_id: int
     name: str | None = None
@@ -225,6 +246,7 @@ class EmpireSummary:
     ship_designs: list[ShipDesignSummary] = field(default_factory=list)
     diplomatic_relations: list[DiplomaticRelationSummary] = field(default_factory=list)
     first_contacts: list[FirstContactSummary] = field(default_factory=list)
+    known_systems: list[SystemSummary] = field(default_factory=list)
     technologies: dict[str, int] = field(default_factory=dict)
     monthly_income: dict[str, float] = field(default_factory=dict)
     fleet_size: float | None = None
