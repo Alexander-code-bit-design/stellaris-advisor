@@ -28,6 +28,7 @@ The MVP can already:
 - resolve owned planet district/building instance IDs to parsed types, levels, positions, and queue IDs where present;
 - map owned starbases to systems, levels, modules, buildings, station fleets, and military power;
 - parse owned fleet objects and ship instances, separating mobile fleets from station/base objects;
+- extract first-pass fleet posture and ship details, including stance, targets, orbit target, home base candidates, queues, speed, ship design, hit points, and build/upgrade progress when present;
 - extract player-owned megastructures, ship designs, researched technologies, grouped tradition details, and ascension perks;
 - render common game identifiers as readable labels while preserving raw IDs for later wiki/RAG lookup;
 - retrieve local `.jsonl`, `.md`, and `.txt` knowledge records into advice prompts with version/topic/confidence scoring;
@@ -54,6 +55,7 @@ The MVP can already:
 - 将玩家星球上的区划/建筑实例 ID 回查为类型、等级、位置和队列 ID 等结构化事实；
 - 将玩家拥有的恒星基地映射到星系、等级、模块、建筑、基地舰队和军事实力；
 - 解析玩家拥有的 fleet 对象和舰船实例，区分机动舰队与空间站/基地对象；
+- 提取第一版舰队姿态和单舰细节，包括姿态、目标、轨道目标、母港候选、队列、速度、舰船设计、船体值、建造/升级进度等可见字段；
 - 提取玩家拥有的巨型结构、舰船设计、已研究科技、按传统树分组的传统明细和飞升天赋；
 - 将常见游戏 ID 渲染为更可读的名称，同时保留原始 ID 供后续 wiki/RAG 检索使用；
 - 将本地 `.jsonl`、`.md` 和 `.txt` 知识记录按版本/主题/置信度检索后插入 advice prompt；

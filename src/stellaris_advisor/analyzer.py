@@ -1065,9 +1065,13 @@ def _format_fleet_counts(empire: EmpireSummary) -> str:
         for fleet in empire.fleets
         if not fleet.station and (fleet.military_power or 0) > 0
     )
+    home_base_count = sum(1 for fleet in empire.fleets if fleet.home_base_id is not None)
+    stance_count = sum(1 for fleet in empire.fleets if fleet.stance is not None)
+    reinforcing_count = sum(1 for fleet in empire.fleets if fleet.reinforcement)
     return (
         f"总计 {len(empire.fleets)}，机动 {mobile_count}，"
-        f"机动战斗 {mobile_military_count}，空间站/基地 {station_count}"
+        f"机动战斗 {mobile_military_count}，空间站/基地 {station_count}，"
+        f"母港已解析 {home_base_count}，姿态已解析 {stance_count}，补员中 {reinforcing_count}"
     )
 
 
@@ -1081,9 +1085,13 @@ def _format_fleet_counts_en(empire: EmpireSummary) -> str:
         for fleet in empire.fleets
         if not fleet.station and (fleet.military_power or 0) > 0
     )
+    home_base_count = sum(1 for fleet in empire.fleets if fleet.home_base_id is not None)
+    stance_count = sum(1 for fleet in empire.fleets if fleet.stance is not None)
+    reinforcing_count = sum(1 for fleet in empire.fleets if fleet.reinforcement)
     return (
         f"total {len(empire.fleets)}, mobile {mobile_count}, "
-        f"mobile military {mobile_military_count}, stations/bases {station_count}"
+        f"mobile military {mobile_military_count}, stations/bases {station_count}, "
+        f"home bases parsed {home_base_count}, stances parsed {stance_count}, reinforcing {reinforcing_count}"
     )
 
 
@@ -1091,16 +1099,40 @@ def _format_fleet_details(empire: EmpireSummary, limit: int = 40) -> str:
     if not empire.fleets:
         return "not parsed"
     parts = []
-    for fleet in empire.fleets[:limit]:
+    sorted_fleets = sorted(
+        empire.fleets,
+        key=lambda fleet: (
+            1 if fleet.station else 0,
+            -float(fleet.military_power or 0),
+            fleet.fleet_id,
+        ),
+    )
+    for fleet in sorted_fleets[:limit]:
         kind = "station/base" if fleet.station else "mobile"
         ships = ", ".join(
-            f"{ship.ship_id}:design {ship.design_id}" for ship in fleet.ships
+            (
+                f"{ship.ship_id}:design {ship.design_id}, hp {_format_number(ship.hit_points)}, "
+                f"armor {_format_number(ship.armor)}, shield {_format_number(ship.shield)}, "
+                f"power {_format_number(ship.military_power)}, build {_format_number(ship.build_progress)}, "
+                f"upgrade {_format_number(ship.upgrade_progress)}"
+            )
+            for ship in fleet.ships[:8]
         ) or "none"
+        if len(fleet.ships) > 8:
+            ships += f" (+{len(fleet.ships) - 8} ships)"
         system = f", system {fleet.system_id}" if fleet.system_id is not None else ""
+        posture = (
+            f", home {_format_number(fleet.home_base_id)}, stance {fleet.stance or 'unknown'}, "
+            f"activity {fleet.fleet_activity or 'unknown'}, orbit {_format_number(fleet.orbit_target_id)}, "
+            f"target_system {_format_number(fleet.target_system_id)}, target_fleet {_format_number(fleet.target_fleet_id)}, "
+            f"speed {_format_number(fleet.speed)}, reinforcement {_format_bool(fleet.reinforcement)}, "
+            f"upgrading {_format_bool(fleet.upgrading)}, build_queue {_format_number(fleet.build_queue_id)}, "
+            f"reinforcement_queue {_format_number(fleet.reinforcement_queue_id)}"
+        )
         parts.append(
             f"{fleet.fleet_id} {_format_name(fleet.name) or 'unnamed'}: "
             f"{compact_name(fleet.ship_class) if fleet.ship_class else 'unknown'}, "
-            f"{kind}, power {_format_number(fleet.military_power)}{system}, ships {ships}"
+            f"{kind}, power {_format_number(fleet.military_power)}{system}{posture}, ships {ships}"
         )
     suffix = f" (+{len(empire.fleets) - limit})" if len(empire.fleets) > limit else ""
     return " | ".join(parts) + suffix

@@ -31,6 +31,7 @@
 - Extract coordinates, ownership, claims, surveyed status, starbases, bypasses, gateways, wormholes, L-Gates, borders, and known hostile routes.
 - Parse player-made claims and all player-visible regular empire, enclave, city-state, and special diplomatic contacts.
 - Detect chokepoints, exposed borders, disconnected territory, important bypasses, and shortest paths from threats to core worlds.
+- Generate a simplified map artifact from structured save data, such as SVG/HTML with systems, hyperlanes, borders, colonies, starbases, threats, and chokepoint annotations.
 - Implement player-visibility filtering before any AI-facing summary is generated.
 - Follow `docs/visibility-policy.md` so the advisor does not leak hidden AI empire information by default.
 

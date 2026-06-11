@@ -378,7 +378,19 @@ starbase_mgr=
 }
 ships=
 {
-    50={ fleet=100 design=200 hit_points=1000 military_power=123.5 }
+    50=
+    {
+        fleet=100
+        design=200
+        hit_points=1000
+        armor=500
+        shield=250
+        experience=10
+        build_progress=0.75
+        upgrade_progress=0.25
+        order="guard"
+        military_power=123.5
+    }
     51={ fleet=999 }
 }
 fleet=
@@ -390,6 +402,20 @@ fleet=
         ship_class=shipclass_starbase
         station=yes
         military_power=123.5
+        home_base=5
+        stance="passive"
+        activity="orbit"
+        reinforcement=yes
+        upgrading=no
+        build_queue=60
+        reinforcement_queue=61
+        speed=1.5
+        orbit={ target=3 }
+        movement_manager=
+        {
+            coordinate={ origin=77 target=88 }
+        }
+        target={ system=88 fleet=999 }
     }
     999=
     {
@@ -570,10 +596,28 @@ leaders=
     assert empire.fleets[0].ship_class == "shipclass_starbase"
     assert empire.fleets[0].station is True
     assert empire.fleets[0].military_power == 123.5
+    assert empire.fleets[0].system_id == 77
+    assert empire.fleets[0].home_base_id == 5
+    assert empire.fleets[0].stance == "passive"
+    assert empire.fleets[0].fleet_activity == "orbit"
+    assert empire.fleets[0].orbit_target_id == 3
+    assert empire.fleets[0].target_system_id == 88
+    assert empire.fleets[0].target_fleet_id == 999
+    assert empire.fleets[0].speed == 1.5
+    assert empire.fleets[0].reinforcement is True
+    assert empire.fleets[0].upgrading is False
+    assert empire.fleets[0].build_queue_id == 60
+    assert empire.fleets[0].reinforcement_queue_id == 61
     assert empire.fleets[0].ship_ids == [50]
     assert empire.fleets[0].ships[0].ship_id == 50
     assert empire.fleets[0].ships[0].design_id == 200
     assert empire.fleets[0].ships[0].hit_points == 1000
+    assert empire.fleets[0].ships[0].armor == 500
+    assert empire.fleets[0].ships[0].shield == 250
+    assert empire.fleets[0].ships[0].experience == 10
+    assert empire.fleets[0].ships[0].build_progress == 0.75
+    assert empire.fleets[0].ships[0].upgrade_progress == 0.25
+    assert empire.fleets[0].ships[0].order == "guard"
     assert empire.starbase_capacity == 5
     assert len(empire.starbases) == 2
     assert empire.starbases[0].starbase_id == 5
@@ -589,6 +633,7 @@ leaders=
     report = build_report(save)
     markdown = render_markdown(report)
     assert "恒星基地: 总数 2；容量占用 1 / 5" in markdown
+    assert "舰队实例: 总计 2，机动 1，机动战斗 1，空间站/基地 1，母港已解析 1，姿态已解析 1，补员中 1" in markdown
     english_markdown = render_markdown(build_report(save, language=ReportLanguage.EN))
     assert "Starbases: total 2; capacity used 1 / 5" in english_markdown
     assert "外交/接触: 关系 2，已通信 1，敌对 0，接壤 1，严重敌对接壤 0，可评估外交降温 1，进行中首次接触 1" in markdown

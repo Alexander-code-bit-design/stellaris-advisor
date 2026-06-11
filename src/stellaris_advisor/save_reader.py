@@ -691,6 +691,8 @@ def _extract_fleets(gamestate_text: str, owned_fleets: list[int]) -> list[FleetS
         ships = _extract_ship_summaries(ships_block, ship_ids)
         movement_manager_block = extract_block(fleet_block, "movement_manager") or ""
         coordinate_block = extract_block(movement_manager_block, "coordinate") or ""
+        orbit_block = extract_block(fleet_block, "orbit") or extract_block(fleet_block, "orbiting") or ""
+        target_block = extract_block(fleet_block, "target") or ""
         summaries.append(
             FleetSummary(
                 fleet_id=fleet_id,
@@ -699,6 +701,32 @@ def _extract_fleets(gamestate_text: str, owned_fleets: list[int]) -> list[FleetS
                 station=_as_optional_bool(find_scalar(fleet_block, "station")),
                 military_power=_as_optional_float(find_scalar(fleet_block, "military_power")),
                 system_id=_as_optional_int(find_scalar(coordinate_block, "origin")),
+                home_base_id=_as_optional_int(
+                    _first_scalar(fleet_block, ["home_base", "homebase", "base", "starbase"])
+                ),
+                stance=_as_optional_str(
+                    _first_scalar(fleet_block, ["stance", "fleet_stance", "aggressive_stance"])
+                ),
+                fleet_activity=_as_optional_str(
+                    _first_scalar(fleet_block, ["activity", "fleet_activity", "order", "mission"])
+                ),
+                orbit_target_id=_as_optional_int(
+                    _first_scalar(orbit_block, ["target", "planet", "starbase", "fleet"])
+                ),
+                target_system_id=_as_optional_int(
+                    _first_scalar(target_block, ["system", "origin"])
+                    or find_scalar(coordinate_block, "target")
+                ),
+                target_fleet_id=_as_optional_int(_first_scalar(target_block, ["fleet"])),
+                speed=_as_optional_float(_first_scalar(fleet_block, ["speed", "current_speed"])),
+                reinforcement=_as_optional_bool(
+                    _first_scalar(fleet_block, ["reinforcement", "reinforcing"])
+                ),
+                upgrading=_as_optional_bool(_first_scalar(fleet_block, ["upgrading", "upgrade"])),
+                build_queue_id=_as_optional_int(find_scalar(fleet_block, "build_queue")),
+                reinforcement_queue_id=_as_optional_int(
+                    _first_scalar(fleet_block, ["reinforcement_queue", "reinforce_queue"])
+                ),
                 ship_ids=ship_ids,
                 ships=ships,
             )
@@ -726,6 +754,16 @@ def _extract_ship_summary(ships_block: str, ship_id: int) -> ShipSummary | None:
         fleet_id=_as_optional_int(find_scalar(ship_block, "fleet")),
         hit_points=_as_optional_float(find_scalar(ship_block, "hit_points")),
         military_power=_as_optional_float(find_scalar(ship_block, "military_power")),
+        armor=_as_optional_float(_first_scalar(ship_block, ["armor", "armor_hit_points"])),
+        shield=_as_optional_float(_first_scalar(ship_block, ["shield", "shield_hit_points"])),
+        experience=_as_optional_float(_first_scalar(ship_block, ["experience", "xp"])),
+        build_progress=_as_optional_float(
+            _first_scalar(ship_block, ["build_progress", "construction_progress"])
+        ),
+        upgrade_progress=_as_optional_float(
+            _first_scalar(ship_block, ["upgrade_progress", "refit_progress"])
+        ),
+        order=_as_optional_str(_first_scalar(ship_block, ["order", "activity", "mission"])),
     )
 
 
@@ -1049,6 +1087,14 @@ def _extract_localized_name(block: str) -> str | None:
             return " ".join(variable_keys)
     key = find_scalar(name_block, "key")
     return _as_optional_str(key)
+
+
+def _first_scalar(block: str, keys: list[str]) -> Any:
+    for key in keys:
+        value = find_scalar(block, key)
+        if value is not None:
+            return value
+    return None
 
 
 def _as_optional_str(value: Any) -> str | None:

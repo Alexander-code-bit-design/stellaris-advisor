@@ -114,6 +114,12 @@ class ShipSummary:
     fleet_id: int | None = None
     hit_points: float | None = None
     military_power: float | None = None
+    armor: float | None = None
+    shield: float | None = None
+    experience: float | None = None
+    build_progress: float | None = None
+    upgrade_progress: float | None = None
+    order: str | None = None
 
 
 @dataclass(slots=True)
@@ -124,6 +130,17 @@ class FleetSummary:
     station: bool | None = None
     military_power: float | None = None
     system_id: int | None = None
+    home_base_id: int | None = None
+    stance: str | None = None
+    fleet_activity: str | None = None
+    orbit_target_id: int | None = None
+    target_system_id: int | None = None
+    target_fleet_id: int | None = None
+    speed: float | None = None
+    reinforcement: bool | None = None
+    upgrading: bool | None = None
+    build_queue_id: int | None = None
+    reinforcement_queue_id: int | None = None
     ship_ids: list[int] = field(default_factory=list)
     ships: list[ShipSummary] = field(default_factory=list)
 
