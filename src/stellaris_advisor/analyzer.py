@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 from .detail_level import DetailLevel
 from .display_names import compact_name, display_name
 from .models import AdvisorReport, EmpireSummary, Finding, SaveGame
@@ -469,6 +471,8 @@ def _format_visible_threats(empire: EmpireSummary) -> str:
         (threat.military_power for threat in empire.visible_threats if threat.military_power is not None),
         default=None,
     )
+    types = _count_labels(threat.threat_type for threat in empire.visible_threats)
+    mobility = _count_labels(threat.mobility for threat in empire.visible_threats)
     threat_paths = [
         path for path in empire.strategic_paths if path.source_kind == "visible_threat"
     ]
@@ -477,7 +481,7 @@ def _format_visible_threats(empire: EmpireSummary) -> str:
     )
     return (
         f"目标 {len(empire.visible_threats)}，最高军力 {_format_number(highest_power)}，"
-        f"最近殖民地 {_format_number(nearest_colony)} 跳"
+        f"最近殖民地 {_format_number(nearest_colony)} 跳，类型 {types}，移动性 {mobility}"
     )
 
 
@@ -488,6 +492,8 @@ def _format_visible_threats_en(empire: EmpireSummary) -> str:
         (threat.military_power for threat in empire.visible_threats if threat.military_power is not None),
         default=None,
     )
+    types = _count_labels(threat.threat_type for threat in empire.visible_threats)
+    mobility = _count_labels(threat.mobility for threat in empire.visible_threats)
     threat_paths = [
         path for path in empire.strategic_paths if path.source_kind == "visible_threat"
     ]
@@ -496,8 +502,16 @@ def _format_visible_threats_en(empire: EmpireSummary) -> str:
     )
     return (
         f"targets {len(empire.visible_threats)}, highest power {_format_number_en(highest_power)}, "
-        f"nearest colony {_format_number_en(nearest_colony)} jumps"
+        f"nearest colony {_format_number_en(nearest_colony)} jumps, types {types}, mobility {mobility}"
     )
+
+
+def _count_labels(values: Iterable[object]) -> str:
+    counts: dict[str, int] = {}
+    for value in values:
+        label = str(value) if value else "unknown"
+        counts[label] = counts.get(label, 0) + 1
+    return ", ".join(f"{label} {count}" for label, count in sorted(counts.items()))
 
 
 def _frontier_hyperlane_count(empire: EmpireSummary, known_ids: set[int]) -> int:
@@ -938,7 +952,9 @@ def _format_visible_threat_details(empire: EmpireSummary, limit: int = 30) -> st
         parts.append(
             f"{threat.threat_id} {_format_name(threat.name) or 'unknown'}: "
             f"system {system_label}, owner {_format_number(threat.owner)}, "
-            f"power {_format_number(threat.military_power)}"
+            f"power {_format_number(threat.military_power)}, "
+            f"type {threat.threat_type or 'unknown'}, mobility {threat.mobility or 'unknown'}, "
+            f"risk {threat.risk_hint or 'unknown'}"
         )
     suffix = f" (+{len(empire.visible_threats) - limit})" if len(empire.visible_threats) > limit else ""
     return " | ".join(parts) + suffix
@@ -1226,7 +1242,11 @@ def _build_empire_findings(empire: EmpireSummary) -> list[Finding]:
             )
             threat_note = ""
             if highest_threat_power is not None:
-                threat_note = f" 玩家可见敌对目标最高军力约 {_format_number(highest_threat_power)}。"
+                threat_note = (
+                    f" 玩家可见敌对目标最高军力约 {_format_number(highest_threat_power)}；"
+                    f"类型分布 {_count_labels(threat.threat_type for threat in empire.visible_threats)}，"
+                    f"移动性分布 {_count_labels(threat.mobility for threat in empire.visible_threats)}。"
+                )
             detail = (
                 f"存档显示当前军事实力和已用舰队容量都是 0；同时玩家可见外交关系中有 "
                 f"{hostile_border_contacts} 个敌对且接壤的对象，另有 {active_first_contacts} 个进行中的首次接触。"
@@ -1335,7 +1355,9 @@ def _build_empire_findings_en(empire: EmpireSummary) -> list[Finding]:
             if highest_threat_power is not None:
                 threat_note = (
                     f" The highest visible hostile target power is about "
-                    f"{_format_number_en(highest_threat_power)}."
+                    f"{_format_number_en(highest_threat_power)}; "
+                    f"type distribution {_count_labels(threat.threat_type for threat in empire.visible_threats)}, "
+                    f"mobility distribution {_count_labels(threat.mobility for threat in empire.visible_threats)}."
                 )
             detail = (
                 f"The save reports both military power and used naval capacity as 0; visible diplomacy also shows "

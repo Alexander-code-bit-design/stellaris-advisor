@@ -4,7 +4,7 @@ from zipfile import ZipFile
 from stellaris_advisor.analyzer import build_report, render_markdown
 from stellaris_advisor.detail_level import DetailLevel
 from stellaris_advisor.report_language import ReportLanguage
-from stellaris_advisor.save_reader import read_save
+from stellaris_advisor.save_reader import _classify_visible_threat, read_save
 from stellaris_advisor.visibility import VisibilityMode
 
 
@@ -58,6 +58,24 @@ def test_detail_level_controls_report_expansion() -> None:
     assert "领袖概览" not in summary_markdown
     assert "领袖细节" in full_markdown
     assert "恒星基地细节" in full_markdown
+
+
+def test_visible_threat_classification_distinguishes_target_kinds() -> None:
+    assert _classify_visible_threat("NO_COMMUNICATIONS_AMOEBA", 3664) == (
+        "space_fauna",
+        "mobile",
+        "hostile space fauna; movement and aggression need mechanics/RAG validation",
+    )
+    assert _classify_visible_threat("CLASS fleet_type_shipclass_starbase", 262) == (
+        "station_or_platform",
+        "stationary",
+        "static hostile installation; do not treat as an invading fleet by itself",
+    )
+    assert _classify_visible_threat("CLASS fleet_type_shipclass_constructor", 0) == (
+        "civilian_ship",
+        "mobile",
+        "mobile non-combat or low-combat ship; war risk depends on owner diplomacy",
+    )
 
 
 def test_read_player_empire_deep_fields(tmp_path: Path) -> None:
@@ -518,6 +536,8 @@ leaders=
     assert empire.visible_threats[0].name == "Test Menace"
     assert empire.visible_threats[0].system_id == 88
     assert empire.visible_threats[0].military_power == 456.5
+    assert empire.visible_threats[0].threat_type == "unknown_hostile"
+    assert empire.visible_threats[0].mobility == "unknown"
     assert len(empire.strategic_paths) == 2
     assert empire.strategic_paths[0].source_system_id == 88
     assert empire.strategic_paths[0].nearest_colony_system_id == 77

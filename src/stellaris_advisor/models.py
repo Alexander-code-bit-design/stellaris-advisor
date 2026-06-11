@@ -220,6 +220,9 @@ class VisibleThreatSummary:
     name: str | None = None
     owner: int | None = None
     military_power: float | None = None
+    threat_type: str | None = None
+    mobility: str | None = None
+    risk_hint: str | None = None
 
 
 @dataclass(slots=True)

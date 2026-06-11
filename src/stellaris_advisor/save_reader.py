@@ -320,19 +320,69 @@ def _extract_visible_threats(intel_block: str) -> list[VisibleThreatSummary]:
         for hostile_entry in iter_anonymous_blocks(hostile_block):
             coordinate_block = extract_block(hostile_entry, "coordinate") or ""
             system_id = _as_optional_int(find_scalar(coordinate_block, "origin"))
+            name = _extract_localized_name(hostile_entry)
+            military_power = _as_optional_float(find_scalar(hostile_entry, "military_power"))
+            threat_type, mobility, risk_hint = _classify_visible_threat(
+                name, military_power
+            )
             threats.append(
                 VisibleThreatSummary(
                     threat_id=threat_id,
                     system_id=system_id if system_id is not None else object_system_id,
-                    name=_extract_localized_name(hostile_entry),
+                    name=name,
                     owner=_as_optional_int(find_scalar(hostile_entry, "owner")),
-                    military_power=_as_optional_float(
-                        find_scalar(hostile_entry, "military_power")
-                    ),
+                    military_power=military_power,
+                    threat_type=threat_type,
+                    mobility=mobility,
+                    risk_hint=risk_hint,
                 )
             )
             threat_id += 1
     return threats
+
+
+def _classify_visible_threat(
+    name: str | None, military_power: float | None
+) -> tuple[str, str, str]:
+    normalized = (name or "").lower()
+    if any(token in normalized for token in ["amoeba", "voidworm", "space fauna", "spaceborne"]):
+        return (
+            "space_fauna",
+            "mobile",
+            "hostile space fauna; movement and aggression need mechanics/RAG validation",
+        )
+    if any(
+        token in normalized
+        for token in ["starbase", "military_station", "mining_station", "research_station", "observation_station"]
+    ):
+        return (
+            "station_or_platform",
+            "stationary",
+            "static hostile installation; do not treat as an invading fleet by itself",
+        )
+    if "constructor" in normalized or "colonizer" in normalized or "science" in normalized:
+        return (
+            "civilian_ship",
+            "mobile",
+            "mobile non-combat or low-combat ship; war risk depends on owner diplomacy",
+        )
+    if military_power is not None and military_power <= 0:
+        return (
+            "noncombat_or_unknown",
+            "unknown",
+            "zero military power; do not treat as direct combat threat without more context",
+        )
+    if "fleet" in normalized:
+        return (
+            "military_fleet",
+            "mobile",
+            "mobile hostile fleet; evaluate owner diplomacy, path, and starbase defenses",
+        )
+    return (
+        "unknown_hostile",
+        "unknown",
+        "hostile entry with unknown behavior; avoid assuming active attack without corroborating data",
+    )
 
 
 def _extract_known_systems(

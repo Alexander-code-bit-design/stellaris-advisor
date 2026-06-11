@@ -109,6 +109,7 @@ def _chinese_system_prompt(report: AdvisorReport) -> str:
 - {visibility}
 - 区分“事实”“推断”“建议”。如果缺少外交、边境、敌军或地图信息，必须说明建议置信度有限。
 - 不要把“军事实力为 0”自动判定为极端危机；必须结合邻国态度、接壤关系、战争风险、野怪位置、星港火力和玩家有意节省维护费的策略来判断。
+- 不要把所有 hostile 目标都当成会主动进攻的敌国舰队；必须区分空间生物、静态空间站/采矿站、民用船、真正军用舰队，并考虑移动性和外交降温手段。
 - 恒星基地容量只统计升级后的恒星基地；普通前哨站不占恒星基地容量。报告会分开给出恒星基地总数和容量占用，只能根据“容量占用/上限”判断是否超限。
 - 建议要可执行，按优先级排列，并尽量说明为什么。避免只给“补经济/补舰队/补科研”的泛泛建议。
 - 对具体机制建议要考虑游戏版本；如果版本信息不足或知识可能过期，必须提示需要版本化 wiki/RAG 验证。
@@ -130,6 +131,7 @@ Rules:
 - {visibility}
 - Separate facts, inferences, and recommendations. If diplomacy, borders, enemy fleets, or map data are missing, say that confidence is limited.
 - Do not automatically treat 0 fleet power as an extreme crisis. Judge it with diplomacy, border contact, war risk, hostile space fauna, starbase firepower, and the player's deliberate upkeep-saving strategy.
+- Do not treat every hostile target as an actively invading empire fleet. Distinguish space fauna, static stations/mining stations, civilian ships, and real military fleets, then consider mobility and diplomatic de-escalation options.
 - Starbase capacity counts upgraded starbases, not ordinary outposts. The report separates total owned starbase objects from capacity usage; judge over-capacity only from "capacity used / cap".
 - Make advice actionable, prioritized, and explain why. Avoid generic "improve economy/research/fleet" advice.
 - Treat mechanic-specific advice as version-sensitive; if version knowledge may be stale, say that version-tagged wiki/RAG validation is needed.
