@@ -21,6 +21,7 @@ from .knowledge import (
 from .localization import LocalizationLoadError, load_localization_catalog
 from .report_language import ReportLanguage
 from .save_reader import SaveReadError, read_save
+from .strategic_focus import StrategicFocus, focus_description
 from .visibility import VisibilityMode
 
 
@@ -59,6 +60,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--advice-focus",
         help="Optional player question or strategic focus for the advisor.",
+    )
+    parser.add_argument(
+        "--strategic-focus",
+        choices=[focus.value for focus in StrategicFocus],
+        default=StrategicFocus.BALANCED.value,
+        help="Advice style focus: balanced, explore, develop, or conquer. Defaults to balanced.",
     )
     parser.add_argument(
         "--advice-model",
@@ -139,7 +146,18 @@ def main(argv: list[str] | None = None) -> int:
         except KnowledgeLoadError as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 2
-        knowledge_query = build_knowledge_query(report.summary, args.advice_focus)
+        strategic_focus = StrategicFocus(args.strategic_focus)
+        knowledge_query = build_knowledge_query(
+            report.summary,
+            " ".join(
+                item
+                for item in [
+                    args.advice_focus,
+                    focus_description(strategic_focus, zh=(language is ReportLanguage.ZH)),
+                ]
+                if item
+            ),
+        )
         knowledge_hits = retrieve_knowledge(
             knowledge_records,
             knowledge_query,
@@ -147,7 +165,12 @@ def main(argv: list[str] | None = None) -> int:
             top_k=args.rag_top_k,
         )
 
-    prompt = build_advice_prompt(report, args.advice_focus, knowledge_hits)
+    prompt = build_advice_prompt(
+        report,
+        args.advice_focus,
+        knowledge_hits,
+        StrategicFocus(args.strategic_focus),
+    )
     if args.advice_provider == "prompt":
         print(prompt.render())
         return 0

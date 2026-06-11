@@ -162,6 +162,16 @@ python -m stellaris_advisor --advice --language zh --detail-level standard "C:\p
 python -m stellaris_advisor --advice --language en --detail-level standard "C:\path\to\save.sav"
 ```
 
+Tune the advice style with a broad strategic focus:
+
+```powershell
+python -m stellaris_advisor --advice --strategic-focus explore "C:\path\to\save.sav"
+python -m stellaris_advisor --advice --strategic-focus develop "C:\path\to\save.sav"
+python -m stellaris_advisor --advice --strategic-focus conquer "C:\path\to\save.sav"
+```
+
+The focus is not a hard constraint. It tells the AI whether to prioritize exploration, development, or conquest while still noting how the other paths may differ.
+
 You can add your own question:
 
 ```powershell
@@ -203,6 +213,16 @@ The current RAG layer is intentionally dependency-free. It loads `.jsonl`, `.md`
 python -m stellaris_advisor --advice --language zh --detail-level standard "C:\path\to\save.sav"
 python -m stellaris_advisor --advice --language en --detail-level standard "C:\path\to\save.sav"
 ```
+
+可以用一个宽泛战略焦点调整建议风格：
+
+```powershell
+python -m stellaris_advisor --advice --strategic-focus explore "C:\path\to\save.sav"
+python -m stellaris_advisor --advice --strategic-focus develop "C:\path\to\save.sav"
+python -m stellaris_advisor --advice --strategic-focus conquer "C:\path\to\save.sav"
+```
+
+这个焦点不是硬约束，只是告诉 AI 优先围绕探索、发展或征服组织建议，同时仍要简短说明其他路线可能如何不同。
 
 也可以附加你的具体问题：
 

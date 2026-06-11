@@ -5,6 +5,7 @@ from stellaris_advisor.analyzer import build_report
 from stellaris_advisor.knowledge import KnowledgeHit, KnowledgeRecord
 from stellaris_advisor.report_language import ReportLanguage
 from stellaris_advisor.save_reader import read_save
+from stellaris_advisor.strategic_focus import StrategicFocus
 from stellaris_advisor.visibility import VisibilityMode
 
 
@@ -15,12 +16,20 @@ def test_build_chinese_advice_prompt_includes_visibility_guard() -> None:
     save = read_save(FIXTURE)
     report = build_report(save, visibility_mode=VisibilityMode.PLAYER_VISIBLE)
 
-    prompt = build_advice_prompt(report, focus="我应该先发展科研还是舰队？")
+    prompt = build_advice_prompt(
+        report,
+        focus="我应该先发展科研还是舰队？",
+        strategic_focus=StrategicFocus.DEVELOP,
+    )
     rendered = prompt.render()
 
     assert "player_visible" in rendered
     assert "不得主动泄露" in rendered
     assert "我应该先发展科研还是舰队？" in rendered
+    assert "战略焦点" in rendered
+    assert "发展：优先评估经济、科研、殖民地建设" in rendered
+    assert "三焦点分歧" in rendered
+    assert "玩家偏好追问" in rendered
     assert "不要把“军事实力为 0”自动判定为极端危机" in rendered
     assert "不要把所有 hostile 目标都当成会主动进攻的敌国舰队" in rendered
     assert "在建议建造军用舰船之前" in rendered
@@ -38,10 +47,14 @@ def test_build_english_advice_prompt_uses_english_structure() -> None:
     save = read_save(FIXTURE)
     report = build_report(save, language=ReportLanguage.EN)
 
-    prompt = build_advice_prompt(report)
+    prompt = build_advice_prompt(report, strategic_focus=StrategicFocus.EXPLORE)
     rendered = prompt.render()
 
     assert "Reply in English" in rendered
+    assert "Strategic focus" in rendered
+    assert "Explore: prioritize science ships" in rendered
+    assert "Focus divergence" in rendered
+    assert "Personalization questions" in rendered
     assert "Known facts" in rendered
     assert "capacity used / cap" in rendered
     assert "Concrete actions" in rendered

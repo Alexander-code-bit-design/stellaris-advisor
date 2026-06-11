@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from .knowledge import KnowledgeHit, render_knowledge_evidence
 from .models import AdvisorReport
 from .report_language import ReportLanguage
+from .strategic_focus import StrategicFocus, focus_description
 from .visibility import VisibilityMode
 
 
@@ -34,13 +35,14 @@ def build_advice_prompt(
     report: AdvisorReport,
     focus: str | None = None,
     knowledge_hits: list[KnowledgeHit] | None = None,
+    strategic_focus: StrategicFocus = StrategicFocus.BALANCED,
 ) -> AdvicePrompt:
     is_en = report.language is ReportLanguage.EN
     system = _english_system_prompt(report) if is_en else _chinese_system_prompt(report)
     user = (
-        _english_user_prompt(report, focus, knowledge_hits or [])
+        _english_user_prompt(report, focus, knowledge_hits or [], strategic_focus)
         if is_en
-        else _chinese_user_prompt(report, focus, knowledge_hits or [])
+        else _chinese_user_prompt(report, focus, knowledge_hits or [], strategic_focus)
     )
     return AdvicePrompt(system=system, user=user)
 
@@ -115,6 +117,7 @@ def _chinese_system_prompt(report: AdvisorReport) -> str:
 - 建议要可执行，按优先级排列，并尽量说明为什么。避免只给“补经济/补舰队/补科研”的泛泛建议。
 - 对具体机制建议要考虑游戏版本；如果版本信息不足或知识可能过期，必须提示需要版本化 wiki/RAG 验证。
 - 如果提供了“检索到的知识证据”，机制建议必须优先引用这些证据；不要把低置信度社区意见当成机制事实。
+- 不要用建议限制玩家发挥；如果玩家偏好不明确，要主动提出 2-4 个用于个性化建议的问题。
 - 优先使用群星中文标准译名；不确定译名时保留英文 key 或说“译名待验证”，不要自造译名。例如 ascension_perk eternal_vigilance 的中文标准译名是“戒心永存”，不是“永恒警戒”。
 - 回答风格应接近群星帝国顾问/内阁简报：有一点游戏内文本气质，但不要编造剧情、角色或隐藏情报。
 - 不要把完整 gamestate、隐藏 AI 帝国情报、未发现星系或剧透信息写入回答。
@@ -138,6 +141,7 @@ Rules:
 - Make advice actionable, prioritized, and explain why. Avoid generic "improve economy/research/fleet" advice.
 - Treat mechanic-specific advice as version-sensitive; if version knowledge may be stale, say that version-tagged wiki/RAG validation is needed.
 - If retrieved knowledge evidence is provided, use it before relying on general memory; do not treat low-confidence community opinions as mechanical facts.
+- Do not constrain the player's creativity with a single rigid answer; if player preference is unclear, ask 2-4 questions that would personalize the advice.
 - Use standard Stellaris terms. If a localized term is uncertain, keep the raw English key or mark it as needing localization validation.
 - Write like a Stellaris imperial council briefing: atmospheric but factual; do not invent lore, characters, hidden intelligence, or spoilers.
 - Do not include full gamestate content, hidden AI intelligence, undiscovered systems, or spoilers.
@@ -145,11 +149,15 @@ Rules:
 
 
 def _chinese_user_prompt(
-    report: AdvisorReport, focus: str | None, knowledge_hits: list[KnowledgeHit]
+    report: AdvisorReport,
+    focus: str | None,
+    knowledge_hits: list[KnowledgeHit],
+    strategic_focus: StrategicFocus,
 ) -> str:
     rendered_report = _render_fact_summary(report)
     rendered_knowledge = render_knowledge_evidence(knowledge_hits, language="zh")
     focus_line = focus or "请给出当前局势评估、主要风险、经济/科研/传统/舰队优先级，以及接下来 10 年的行动计划。"
+    strategic_focus_line = focus_description(strategic_focus, zh=True)
     knowledge_section = (
         f"\n\n{rendered_knowledge}\n"
         if rendered_knowledge
@@ -161,21 +169,27 @@ def _chinese_user_prompt(
 玩家关注点：
 {focus_line}
 
+战略焦点：
+{strategic_focus_line}
+
+这个焦点只用于调整建议风格，不代表玩家只能走这一条路。请在默认建议之外，简短指出另外两个焦点下可能不同的思路；如果玩家偏好不足以决定路线，请先给出需要追问的问题。
+
 请用中文输出，格式为：
 1. 帝国顾问简报：一句话判断，用群星风格但保持事实边界
-2. 已知事实：只列存档摘要明确支持的信息
-3. 不确定情报：列出外交、边境、野怪、地图、敌军、殖民地建筑/岗位等缺口，并说明这些缺口如何影响判断
-4. 风险与机会：每条标注“事实支持 / 推断 / 待验证”
-5. 下一步优先级：按“立即 / 1-3 年 / 3-10 年”排序
-6. 具体操作建议：
+2. 玩家偏好追问：列出 2-4 个能显著改变建议的问题；如果当前信息已足够，也说明默认假设
+3. 已知事实：最多 6 条，只列会影响建议的事实，避免复述存档
+4. 不确定情报：列出外交、边境、野怪、地图、敌军、殖民地建筑/岗位等缺口，并说明这些缺口如何影响判断
+5. 三焦点分歧：分别用一小段说明探索、发展、征服三种焦点下建议会如何不同
+6. 当前焦点下的下一步优先级：按“立即 / 1-3 年 / 3-10 年”排序
+7. 当前焦点下的具体操作建议：
    - 法令：是否开启、关闭或保留哪些法令；若存档未提供可选法令，就说明需要读取
    - 传统与飞升：下一棵传统、下一个传统节点、飞升天赋候选；不确定译名时保留 key
    - 星球：每个已知殖民地的建筑、区划、岗位或星球决议建议；如果细节不足，明确说需要 full/detail 或更深解析
    - 舰队与舰船设计：是否建舰、建多少、设计思路、武器/防御/作战电脑取舍；如果敌情未知，不要给过度确定的数量
    - 领袖与内阁：领袖岗位、总督/科学家/指挥官安排、内阁议程建议；缺数据则说明
    - 恒星基地：升级、模块、建筑、船坞、防御平台建议；不得把普通前哨站当成占容量的恒星基地
-7. 未来 10 年行动计划：按年份或阶段列具体动作
-8. 需要版本化 wiki/RAG 验证的机制与译名
+8. 未来 10 年行动计划：按年份或阶段列具体动作
+9. 需要版本化 wiki/RAG 验证的机制、特殊玩法与译名
 
 存档事实摘要：
 {rendered_report}
@@ -184,11 +198,15 @@ def _chinese_user_prompt(
 
 
 def _english_user_prompt(
-    report: AdvisorReport, focus: str | None, knowledge_hits: list[KnowledgeHit]
+    report: AdvisorReport,
+    focus: str | None,
+    knowledge_hits: list[KnowledgeHit],
+    strategic_focus: StrategicFocus,
 ) -> str:
     rendered_report = _render_fact_summary(report)
     rendered_knowledge = render_knowledge_evidence(knowledge_hits, language="en")
     focus_line = focus or "Assess the current situation, major risks, economy/research/tradition/fleet priorities, and a 10-year action plan."
+    strategic_focus_line = focus_description(strategic_focus, zh=False)
     knowledge_section = (
         f"\n\n{rendered_knowledge}\n"
         if rendered_knowledge
@@ -200,21 +218,27 @@ Below is a factual save summary parsed by Stellaris Advisor.
 Player focus:
 {focus_line}
 
+Strategic focus:
+{strategic_focus_line}
+
+This focus tunes the advice style; it does not mean the player must follow only this path. Alongside the default advice, briefly note how the other two focus styles could change the plan. If player preference is underspecified, ask targeted personalization questions.
+
 Reply in English using this structure:
 1. Imperial council brief: one-sentence judgment, atmospheric but fact-bounded
-2. Known facts: only facts directly supported by the save summary
-3. Intelligence gaps: diplomacy, borders, hostile fauna, map shape, enemy fleets, colony buildings/jobs, and how those gaps affect confidence
-4. Risks and opportunities: tag each item as fact-supported, inference, or needs validation
-5. Next priorities: immediate, 1-3 years, and 3-10 years
-6. Concrete actions:
+2. Personalization questions: 2-4 questions that would materially change the advice, or state the default assumptions if enough is known
+3. Known facts: at most 6 advice-relevant facts directly supported by the save summary
+4. Intelligence gaps: diplomacy, borders, hostile fauna, map shape, enemy fleets, colony buildings/jobs, and how those gaps affect confidence
+5. Focus divergence: briefly compare exploration, development, and conquest plans
+6. Next priorities for the selected focus: immediate, 1-3 years, and 3-10 years
+7. Concrete actions for the selected focus:
    - Edicts: keep, enable, or disable; say when available choices were not parsed
    - Traditions and ascension perks: next tree/node/perk candidates; keep raw keys when uncertain
    - Planets: per-colony buildings, districts, jobs, or decisions; say when deeper parsing is needed
    - Fleets and ship designs: whether to build, how many, and design logic without overconfident numbers when enemy intel is missing
    - Leaders and council: assignments, governors/scientists/commanders, and agenda suggestions when data allows
    - Starbases: upgrades, modules, buildings, shipyards, and defense platforms; never count ordinary outposts against starbase capacity
-7. 10-year action plan
-8. Version-tagged wiki/RAG checks needed for mechanics and localization
+8. 10-year action plan
+9. Version-tagged wiki/RAG checks needed for mechanics, unusual strategies, and localization
 
 Factual save summary:
 {rendered_report}
