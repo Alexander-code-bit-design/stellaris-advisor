@@ -44,6 +44,7 @@ def build_report(
                 f"派系状态: {_format_faction_status(empire)}",
                 f"外交/接触: {_format_diplomacy(empire)}",
                 f"可见星图/航道: {_format_known_map(empire)}",
+                f"威胁/边境跳数: {_format_strategic_paths(empire)}",
                 f"殖民地数量: {len(empire.planets) or len(empire.owned_planets)}",
                 f"星球概览: {_format_planets(empire)}",
                 f"恒星基地: {_format_starbase_count(empire)}",
@@ -61,7 +62,7 @@ def build_report(
             ]
         )
         if detail_level is not DetailLevel.SUMMARY:
-            summary.insert(23, f"领袖概览: {_format_leaders(empire, detail_level)}")
+            summary.insert(24, f"领袖概览: {_format_leaders(empire, detail_level)}")
         if empire.monthly_income:
             summary.append(f"月收入概览: {_format_resources(empire.monthly_income)}")
         if detail_level is DetailLevel.FULL:
@@ -164,6 +165,7 @@ def _build_english_report(
                 f"Faction status: {_format_faction_status_en(empire)}",
                 f"Diplomacy/contacts: {_format_diplomacy_en(empire)}",
                 f"Known map/hyperlanes: {_format_known_map_en(empire)}",
+                f"Threat/border jump distances: {_format_strategic_paths_en(empire)}",
                 f"Colonies: {len(empire.planets) or len(empire.owned_planets)}",
                 f"Planet overview: {_format_planets_en(empire)}",
                 f"Starbases: {_format_starbase_count_en(empire)}",
@@ -181,7 +183,7 @@ def _build_english_report(
             ]
         )
         if detail_level is not DetailLevel.SUMMARY:
-            summary.insert(23, f"Leader overview: {_format_leaders_en(empire, detail_level)}")
+            summary.insert(24, f"Leader overview: {_format_leaders_en(empire, detail_level)}")
         if empire.monthly_income:
             summary.append(f"Monthly income: {_format_resources(empire.monthly_income)}")
         if detail_level is DetailLevel.FULL:
@@ -467,6 +469,48 @@ def _frontier_hyperlane_count(empire: EmpireSummary, known_ids: set[int]) -> int
     )
 
 
+def _format_strategic_paths(empire: EmpireSummary) -> str:
+    if not empire.strategic_paths:
+        return "尚未解析"
+    nearest_colony = _min_known_distance(
+        path.jumps_to_nearest_colony for path in empire.strategic_paths
+    )
+    nearest_starbase = _min_known_distance(
+        path.jumps_to_nearest_starbase for path in empire.strategic_paths
+    )
+    nearest_upgraded = _min_known_distance(
+        path.jumps_to_nearest_upgraded_starbase for path in empire.strategic_paths
+    )
+    return (
+        f"来源 {len(empire.strategic_paths)}，最近殖民地 {_format_number(nearest_colony)} 跳，"
+        f"最近星港 {_format_number(nearest_starbase)} 跳，最近升级星港 {_format_number(nearest_upgraded)} 跳"
+    )
+
+
+def _format_strategic_paths_en(empire: EmpireSummary) -> str:
+    if not empire.strategic_paths:
+        return "not parsed"
+    nearest_colony = _min_known_distance(
+        path.jumps_to_nearest_colony for path in empire.strategic_paths
+    )
+    nearest_starbase = _min_known_distance(
+        path.jumps_to_nearest_starbase for path in empire.strategic_paths
+    )
+    nearest_upgraded = _min_known_distance(
+        path.jumps_to_nearest_upgraded_starbase for path in empire.strategic_paths
+    )
+    return (
+        f"sources {len(empire.strategic_paths)}, nearest colony {_format_number_en(nearest_colony)} jumps, "
+        f"nearest starbase {_format_number_en(nearest_starbase)} jumps, "
+        f"nearest upgraded starbase {_format_number_en(nearest_upgraded)} jumps"
+    )
+
+
+def _min_known_distance(values: object) -> int | None:
+    distances = [value for value in values if isinstance(value, int)]
+    return min(distances) if distances else None
+
+
 def _format_leaders(
     empire: EmpireSummary,
     detail_level: DetailLevel = DetailLevel.STANDARD,
@@ -720,6 +764,7 @@ def _format_full_detail_lines(empire: EmpireSummary) -> list[str]:
         f"领袖细节: {_format_leader_details(empire)}",
         f"外交/接触细节: {_format_diplomacy_details(empire)}",
         f"可见星图/航道细节: {_format_known_map_details(empire)}",
+        f"威胁/边境跳数细节: {_format_strategic_path_details(empire)}",
         f"舰队实例细节: {_format_fleet_details(empire)}",
         f"恒星基地细节: {_format_starbase_details(empire)}",
         f"星球建筑/区划细节: {_format_planet_details(empire)}",
@@ -732,6 +777,7 @@ def _format_full_detail_lines_en(empire: EmpireSummary) -> list[str]:
         f"Leader details: {_format_leader_details(empire)}",
         f"Diplomacy/contact details: {_format_diplomacy_details(empire)}",
         f"Known map/hyperlane details: {_format_known_map_details(empire)}",
+        f"Threat/border jump details: {_format_strategic_path_details(empire)}",
         f"Fleet instance details: {_format_fleet_details(empire)}",
         f"Starbase details: {_format_starbase_details(empire)}",
         f"Planet building/district details: {_format_planet_details(empire)}",
@@ -834,6 +880,60 @@ def _format_known_map_details(empire: EmpireSummary, limit: int = 30) -> str:
         )
     suffix = f" (+{len(empire.known_systems) - limit})" if len(empire.known_systems) > limit else ""
     return " | ".join(parts) + suffix
+
+
+def _format_strategic_path_details(empire: EmpireSummary, limit: int = 20) -> str:
+    if not empire.strategic_paths:
+        return "not parsed"
+    parts = []
+    for path in empire.strategic_paths[:limit]:
+        source = (
+            f"{path.source_kind} {path.source_id} at "
+            f"{_format_system_label(path.source_system_id, path.source_system_name)}"
+        )
+        colony = _format_path_target(
+            "colony",
+            path.nearest_colony_system_id,
+            path.nearest_colony_system_name,
+            path.jumps_to_nearest_colony,
+        )
+        starbase = _format_path_target(
+            "starbase",
+            path.nearest_starbase_system_id,
+            path.nearest_starbase_system_name,
+            path.jumps_to_nearest_starbase,
+        )
+        upgraded = _format_path_target(
+            "upgraded",
+            path.nearest_upgraded_starbase_system_id,
+            path.nearest_upgraded_starbase_system_name,
+            path.jumps_to_nearest_upgraded_starbase,
+        )
+        shipyard = _format_path_target(
+            "shipyard",
+            path.nearest_shipyard_system_id,
+            path.nearest_shipyard_system_name,
+            path.jumps_to_nearest_shipyard,
+        )
+        parts.append(f"{source}: {colony}; {starbase}; {upgraded}; {shipyard}")
+    suffix = f" (+{len(empire.strategic_paths) - limit})" if len(empire.strategic_paths) > limit else ""
+    return " | ".join(parts) + suffix
+
+
+def _format_path_target(
+    label: str,
+    system_id: int | None,
+    system_name: str | None,
+    jumps: int | None,
+) -> str:
+    if system_id is None or jumps is None:
+        return f"{label} unknown"
+    return f"{label} {_format_system_label(system_id, system_name)} {jumps} jumps"
+
+
+def _format_system_label(system_id: int, system_name: str | None) -> str:
+    name = _format_name(system_name)
+    return f"{name or 'system'} ({system_id})"
 
 
 def _format_fleet_counts(empire: EmpireSummary) -> str:
@@ -1037,9 +1137,22 @@ def _build_empire_findings(empire: EmpireSummary) -> list[Finding]:
             1 for contact in empire.first_contacts if contact.status != "finished"
         )
         if hostile_border_contacts:
+            nearest_colony = _min_known_distance(
+                path.jumps_to_nearest_colony for path in empire.strategic_paths
+            )
+            nearest_upgraded = _min_known_distance(
+                path.jumps_to_nearest_upgraded_starbase for path in empire.strategic_paths
+            )
+            distance_note = ""
+            if nearest_colony is not None or nearest_upgraded is not None:
+                distance_note = (
+                    f" 已解析可见航道显示，相关接触源距离最近殖民地 {_format_number(nearest_colony)} 跳，"
+                    f"距离最近升级星港 {_format_number(nearest_upgraded)} 跳。"
+                )
             detail = (
                 f"存档显示当前军事实力和已用舰队容量都是 0；同时玩家可见外交关系中有 "
                 f"{hostile_border_contacts} 个敌对且接壤的对象，另有 {active_first_contacts} 个进行中的首次接触。"
+                f"{distance_note}"
             )
             recommendation = (
                 "零舰队省维护费策略已经需要重新评估：优先结合该接壤方向的星港火力、超空间 chokepoint、"
@@ -1119,9 +1232,23 @@ def _build_empire_findings_en(empire: EmpireSummary) -> list[Finding]:
             1 for contact in empire.first_contacts if contact.status != "finished"
         )
         if hostile_border_contacts:
+            nearest_colony = _min_known_distance(
+                path.jumps_to_nearest_colony for path in empire.strategic_paths
+            )
+            nearest_upgraded = _min_known_distance(
+                path.jumps_to_nearest_upgraded_starbase for path in empire.strategic_paths
+            )
+            distance_note = ""
+            if nearest_colony is not None or nearest_upgraded is not None:
+                distance_note = (
+                    f" Parsed visible hyperlanes put the relevant contact source(s) "
+                    f"{_format_number_en(nearest_colony)} jump(s) from the nearest colony and "
+                    f"{_format_number_en(nearest_upgraded)} jump(s) from the nearest upgraded starbase."
+                )
             detail = (
                 f"The save reports both military power and used naval capacity as 0; visible diplomacy also shows "
                 f"{hostile_border_contacts} hostile border contact(s), with {active_first_contacts} active first contact(s)."
+                f"{distance_note}"
             )
             recommendation = (
                 "Re-evaluate the upkeep-saving zero-fleet strategy with starbase firepower, hyperlane chokepoints, "

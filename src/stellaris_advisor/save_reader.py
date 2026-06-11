@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import zipfile
+from collections import deque
 from pathlib import Path
 from typing import Any
 
@@ -38,6 +39,7 @@ from .models import (
     ShipSummary,
     ShipDesignSummary,
     StarbaseSummary,
+    StrategicPathSummary,
     SystemSummary,
 )
 
@@ -155,6 +157,13 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
 
     starbases = _extract_starbases(gamestate_text, owned_fleets)
     first_contacts = _extract_first_contacts(gamestate_text, country_id)
+    known_systems = _extract_known_systems(
+        gamestate_text,
+        country_id,
+        owned_planets,
+        starbases,
+        first_contacts,
+    )
 
     return EmpireSummary(
         country_id=country_id,
@@ -194,13 +203,8 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
         ship_designs=_extract_ship_designs(gamestate_text, ship_design_ids),
         diplomatic_relations=_extract_diplomatic_relations(relations_manager_block, gamestate_text),
         first_contacts=first_contacts,
-        known_systems=_extract_known_systems(
-            gamestate_text,
-            country_id,
-            owned_planets,
-            starbases,
-            first_contacts,
-        ),
+        known_systems=known_systems,
+        strategic_paths=_build_strategic_paths(known_systems, starbases, first_contacts),
         technologies=_extract_technologies(country_block),
         monthly_income=monthly_income,
         fleet_size=_as_optional_float(find_scalar(country_block, "fleet_size")),
@@ -373,6 +377,121 @@ def _extract_hyperlanes(system_block: str) -> list[HyperlaneSummary]:
             )
         )
     return hyperlanes
+
+
+def _build_strategic_paths(
+    known_systems: list[SystemSummary],
+    starbases: list[StarbaseSummary],
+    first_contacts: list[FirstContactSummary],
+) -> list[StrategicPathSummary]:
+    if not known_systems:
+        return []
+
+    systems_by_id = {system.system_id: system for system in known_systems}
+    graph = _build_known_system_graph(known_systems)
+    colony_system_ids = {system.system_id for system in known_systems if system.colonies}
+    starbase_system_ids = {system.system_id for system in known_systems if system.starbase_ids}
+    upgraded_starbase_system_ids = {
+        starbase.system_id
+        for starbase in starbases
+        if starbase.system_id is not None and _uses_starbase_capacity(starbase.level)
+    }
+    shipyard_system_ids = {
+        starbase.system_id
+        for starbase in starbases
+        if starbase.system_id is not None
+        and any(str(module).strip('"') == "shipyard" for module in starbase.modules)
+    }
+
+    paths: list[StrategicPathSummary] = []
+    seen_sources: set[tuple[str, int, int]] = set()
+    for contact in first_contacts:
+        if contact.status == "finished" or contact.location_id is None:
+            continue
+        source = ("first_contact", contact.contact_id, contact.location_id)
+        if source in seen_sources:
+            continue
+        seen_sources.add(source)
+        if contact.location_id not in systems_by_id:
+            continue
+        distances = _shortest_known_distances(graph, contact.location_id)
+        nearest_colony = _nearest_system(distances, colony_system_ids)
+        nearest_starbase = _nearest_system(distances, starbase_system_ids)
+        nearest_upgraded = _nearest_system(distances, upgraded_starbase_system_ids)
+        nearest_shipyard = _nearest_system(distances, shipyard_system_ids)
+        source_system = systems_by_id.get(contact.location_id)
+        paths.append(
+            StrategicPathSummary(
+                source_kind="first_contact",
+                source_id=contact.contact_id,
+                source_system_id=contact.location_id,
+                source_system_name=source_system.name if source_system else None,
+                nearest_colony_system_id=nearest_colony,
+                nearest_colony_system_name=_system_name(systems_by_id, nearest_colony),
+                jumps_to_nearest_colony=_distance_to(distances, nearest_colony),
+                nearest_starbase_system_id=nearest_starbase,
+                nearest_starbase_system_name=_system_name(systems_by_id, nearest_starbase),
+                jumps_to_nearest_starbase=_distance_to(distances, nearest_starbase),
+                nearest_upgraded_starbase_system_id=nearest_upgraded,
+                nearest_upgraded_starbase_system_name=_system_name(systems_by_id, nearest_upgraded),
+                jumps_to_nearest_upgraded_starbase=_distance_to(distances, nearest_upgraded),
+                nearest_shipyard_system_id=nearest_shipyard,
+                nearest_shipyard_system_name=_system_name(systems_by_id, nearest_shipyard),
+                jumps_to_nearest_shipyard=_distance_to(distances, nearest_shipyard),
+            )
+        )
+    return paths
+
+
+def _build_known_system_graph(known_systems: list[SystemSummary]) -> dict[int, set[int]]:
+    known_ids = {system.system_id for system in known_systems}
+    graph: dict[int, set[int]] = {system.system_id: set() for system in known_systems}
+    for system in known_systems:
+        for lane in system.hyperlanes:
+            if lane.to_system_id in known_ids:
+                graph[system.system_id].add(lane.to_system_id)
+                graph.setdefault(lane.to_system_id, set()).add(system.system_id)
+    return graph
+
+
+def _shortest_known_distances(graph: dict[int, set[int]], source_id: int) -> dict[int, int]:
+    distances = {source_id: 0}
+    queue: deque[int] = deque([source_id])
+    while queue:
+        current = queue.popleft()
+        for neighbor in graph.get(current, set()):
+            if neighbor in distances:
+                continue
+            distances[neighbor] = distances[current] + 1
+            queue.append(neighbor)
+    return distances
+
+
+def _nearest_system(distances: dict[int, int], target_ids: set[int]) -> int | None:
+    reachable = [(distances[target_id], target_id) for target_id in target_ids if target_id in distances]
+    if not reachable:
+        return None
+    return min(reachable)[1]
+
+
+def _distance_to(distances: dict[int, int], system_id: int | None) -> int | None:
+    if system_id is None:
+        return None
+    return distances.get(system_id)
+
+
+def _system_name(systems_by_id: dict[int, SystemSummary], system_id: int | None) -> str | None:
+    if system_id is None:
+        return None
+    system = systems_by_id.get(system_id)
+    return system.name if system else None
+
+
+def _uses_starbase_capacity(level: str | None) -> bool:
+    if level is None:
+        return False
+    normalized = level.strip('"')
+    return normalized not in {"starbase_level_outpost", "outpost"}
 
 
 def _extract_fleets(gamestate_text: str, owned_fleets: list[int]) -> list[FleetSummary]:

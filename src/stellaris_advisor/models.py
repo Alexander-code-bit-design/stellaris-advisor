@@ -214,6 +214,26 @@ class SystemSummary:
 
 
 @dataclass(slots=True)
+class StrategicPathSummary:
+    source_kind: str
+    source_id: int
+    source_system_id: int
+    source_system_name: str | None = None
+    nearest_colony_system_id: int | None = None
+    nearest_colony_system_name: str | None = None
+    jumps_to_nearest_colony: int | None = None
+    nearest_starbase_system_id: int | None = None
+    nearest_starbase_system_name: str | None = None
+    jumps_to_nearest_starbase: int | None = None
+    nearest_upgraded_starbase_system_id: int | None = None
+    nearest_upgraded_starbase_system_name: str | None = None
+    jumps_to_nearest_upgraded_starbase: int | None = None
+    nearest_shipyard_system_id: int | None = None
+    nearest_shipyard_system_name: str | None = None
+    jumps_to_nearest_shipyard: int | None = None
+
+
+@dataclass(slots=True)
 class EmpireSummary:
     country_id: int
     name: str | None = None
@@ -247,6 +267,7 @@ class EmpireSummary:
     diplomatic_relations: list[DiplomaticRelationSummary] = field(default_factory=list)
     first_contacts: list[FirstContactSummary] = field(default_factory=list)
     known_systems: list[SystemSummary] = field(default_factory=list)
+    strategic_paths: list[StrategicPathSummary] = field(default_factory=list)
     technologies: dict[str, int] = field(default_factory=dict)
     monthly_income: dict[str, float] = field(default_factory=dict)
     fleet_size: float | None = None

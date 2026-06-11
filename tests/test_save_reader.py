@@ -187,7 +187,7 @@ first_contacts=
             owner=0
             country=43
             name={ key="Theta Aliens" literal=yes }
-            location=77
+            location=88
             leader=11
             date="2253.08.01"
             days_left=24
@@ -499,6 +499,16 @@ leaders=
     assert empire.known_systems[0].bypass_ids == [1]
     assert [lane.to_system_id for lane in empire.known_systems[0].hyperlanes] == [88, 99]
     assert empire.known_systems[0].hyperlanes[1].bridge is True
+    assert len(empire.strategic_paths) == 1
+    assert empire.strategic_paths[0].source_system_id == 88
+    assert empire.strategic_paths[0].nearest_colony_system_id == 77
+    assert empire.strategic_paths[0].jumps_to_nearest_colony == 1
+    assert empire.strategic_paths[0].nearest_starbase_system_id == 77
+    assert empire.strategic_paths[0].jumps_to_nearest_starbase == 1
+    assert empire.strategic_paths[0].nearest_upgraded_starbase_system_id == 77
+    assert empire.strategic_paths[0].jumps_to_nearest_upgraded_starbase == 1
+    assert empire.strategic_paths[0].nearest_shipyard_system_id == 77
+    assert empire.strategic_paths[0].jumps_to_nearest_shipyard == 1
     assert empire.owned_leaders == [10, 11, 12]
     assert len(empire.leaders) == 2
     assert empire.leaders[0].name == "Leader One"
@@ -542,8 +552,10 @@ leaders=
     assert "Starbases: total 2; capacity used 1 / 5" in english_markdown
     assert "外交/接触: 关系 2，已通信 1，敌对 0，接壤 1，进行中首次接触 1" in markdown
     assert "可见星图/航道: 已知/相关星系 2，有星港 1，首次接触位置 1，外缘航道候选 2" in markdown
+    assert "威胁/边境跳数: 来源 1，最近殖民地 1 跳，最近星港 1 跳，最近升级星港 1 跳" in markdown
     assert "Diplomacy/contacts: relations 2, communications 1, hostile 0, border contacts 1, active first contacts 1" in english_markdown
     assert "Known map/hyperlanes: known/relevant systems 2, starbase systems 1, first-contact locations 1, frontier link candidates 2" in english_markdown
+    assert "Threat/border jump distances: sources 1, nearest colony 1 jumps, nearest starbase 1 jumps, nearest upgraded starbase 1 jumps" in english_markdown
     assert len(empire.megastructures) == 1
     assert empire.megastructures[0].megastructure_type == "grand_archive_0"
     assert empire.megastructures[0].system_id == 77
