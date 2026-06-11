@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .detail_level import DetailLevel
 from .display_names import compact_name, display_name
 from .models import AdvisorReport, EmpireSummary, Finding, SaveGame
 from .report_language import ReportLanguage
@@ -10,9 +11,10 @@ def build_report(
     save: SaveGame,
     visibility_mode: VisibilityMode = VisibilityMode.PLAYER_VISIBLE,
     language: ReportLanguage = ReportLanguage.ZH,
+    detail_level: DetailLevel = DetailLevel.STANDARD,
 ) -> AdvisorReport:
     if language is ReportLanguage.EN:
-        return _build_english_report(save, visibility_mode, language)
+        return _build_english_report(save, visibility_mode, language, detail_level)
 
     meta = save.metadata
     empire = save.player_empire
@@ -39,14 +41,13 @@ def build_report(
                 f"启用法令: {_format_id_list(empire.edicts)}",
                 f"政策标记: {_format_id_list(empire.policy_flags, limit=6)}",
                 f"领袖数量: {len(empire.leaders) or len(empire.owned_leaders)}",
-                f"领袖概览: {_format_leaders(empire)}",
                 f"派系状态: {_format_faction_status(empire)}",
                 f"殖民地数量: {len(empire.planets) or len(empire.owned_planets)}",
                 f"星球概览: {_format_planets(empire)}",
                 f"恒星基地: {len(empire.starbases)} / {_format_number(empire.starbase_capacity)}",
-                f"恒星基地概览: {_format_starbases(empire)}",
+                f"恒星基地概览: {_format_starbases(empire, detail_level)}",
                 f"巨型结构: {_format_megastructures(empire)}",
-                f"舰船设计: {_format_ship_designs(empire)}",
+                f"舰船设计: {_format_ship_designs(empire, detail_level)}",
                 f"已研究科技: {_format_technologies(empire)}",
                 f"帝国规模: {_format_number(empire.empire_size)}",
                 f"智慧人口: {_format_number(empire.sapient_pops)}",
@@ -56,8 +57,12 @@ def build_report(
                 f"胜利排名: {_format_number(empire.victory_rank)}",
             ]
         )
+        if detail_level is not DetailLevel.SUMMARY:
+            summary.insert(21, f"领袖概览: {_format_leaders(empire, detail_level)}")
         if empire.monthly_income:
             summary.append(f"月收入概览: {_format_resources(empire.monthly_income)}")
+        if detail_level is DetailLevel.FULL:
+            summary.extend(_format_full_detail_lines(empire))
 
     findings: list[Finding] = []
     if meta.version is None:
@@ -106,7 +111,7 @@ def build_report(
 
     next_steps = [
         "细化星球解析：把区划、建筑、岗位 ID 映射到定义名，并提取建造队列和失业/岗位缺口。",
-        "解析恒星基地、舰队、舰船设计和补员队列，确认军事实力为零是否为真实局势或生物舰船字段差异。",
+        "解析舰队、外交、边境与 chokepoint，用上下文判断无常备舰队是否是合理维护费策略。",
         "解析领袖详情和内阁席位，把 owned_leaders ID 映射到姓名、等级、岗位和特质。",
         "解析 galactic_object 和超空间航道，并在 player_visible 模式下做边境与 chokepoint 分析。",
         "建立按版本标记的 wiki/patch/community 知识库，让 LLM 基于结构化摘要和检索证据生成建议。",
@@ -115,6 +120,7 @@ def build_report(
     return AdvisorReport(
         visibility_mode=visibility_mode,
         language=language,
+        detail_level=detail_level,
         summary=summary,
         findings=findings,
         next_steps=next_steps,
@@ -122,7 +128,10 @@ def build_report(
 
 
 def _build_english_report(
-    save: SaveGame, visibility_mode: VisibilityMode, language: ReportLanguage
+    save: SaveGame,
+    visibility_mode: VisibilityMode,
+    language: ReportLanguage,
+    detail_level: DetailLevel,
 ) -> AdvisorReport:
     meta = save.metadata
     empire = save.player_empire
@@ -149,14 +158,13 @@ def _build_english_report(
                 f"Active edicts: {_format_id_list_en(empire.edicts)}",
                 f"Policy flags: {_format_id_list_en(empire.policy_flags, limit=6)}",
                 f"Leaders: {len(empire.leaders) or len(empire.owned_leaders)}",
-                f"Leader overview: {_format_leaders(empire)}",
                 f"Faction status: {_format_faction_status_en(empire)}",
                 f"Colonies: {len(empire.planets) or len(empire.owned_planets)}",
                 f"Planet overview: {_format_planets(empire)}",
                 f"Starbases: {len(empire.starbases)} / {_format_number(empire.starbase_capacity)}",
-                f"Starbase overview: {_format_starbases(empire)}",
+                f"Starbase overview: {_format_starbases(empire, detail_level)}",
                 f"Megastructures: {_format_megastructures_en(empire)}",
-                f"Ship designs: {_format_ship_designs(empire)}",
+                f"Ship designs: {_format_ship_designs(empire, detail_level)}",
                 f"Researched technologies: {_format_technologies_en(empire)}",
                 f"Empire size: {_format_number(empire.empire_size)}",
                 f"Sapient pops: {_format_number(empire.sapient_pops)}",
@@ -166,8 +174,12 @@ def _build_english_report(
                 f"Victory rank: {_format_number(empire.victory_rank)}",
             ]
         )
+        if detail_level is not DetailLevel.SUMMARY:
+            summary.insert(21, f"Leader overview: {_format_leaders(empire, detail_level)}")
         if empire.monthly_income:
             summary.append(f"Monthly income: {_format_resources(empire.monthly_income)}")
+        if detail_level is DetailLevel.FULL:
+            summary.extend(_format_full_detail_lines_en(empire))
 
     findings: list[Finding] = []
     if meta.version is None:
@@ -213,7 +225,7 @@ def _build_english_report(
     next_steps = [
         "Replace fallback ID formatting with version-aware game localization data for English and Chinese.",
         "Extract planet construction queues, unemployment/job gaps, districts, and building definition names.",
-        "Parse fleets, reinforcement queues, ship classes, and current military posture.",
+        "Parse fleets, diplomacy, borders, and chokepoints so a zero standing fleet can be judged in context.",
         "Parse galactic objects and hyperlanes for player-visible border and chokepoint analysis.",
         "Build a version-tagged wiki/patch/community knowledge index for evidence-backed LLM answers.",
     ]
@@ -221,6 +233,7 @@ def _build_english_report(
     return AdvisorReport(
         visibility_mode=visibility_mode,
         language=language,
+        detail_level=detail_level,
         summary=summary,
         findings=findings,
         next_steps=next_steps,
@@ -363,12 +376,18 @@ def _format_faction_status_en(empire: EmpireSummary) -> str:
     return f"applicable, {empire.pop_faction_members} faction members"
 
 
-def _format_leaders(empire: EmpireSummary, limit: int = 6) -> str:
+def _format_leaders(
+    empire: EmpireSummary,
+    detail_level: DetailLevel = DetailLevel.STANDARD,
+    limit: int = 6,
+) -> str:
     if not empire.leaders:
         return "尚未解析详情"
     parts = []
     for leader in empire.leaders[:limit]:
-        traits = f"; {', '.join(compact_name(trait) for trait in leader.traits[:2])}" if leader.traits else ""
+        traits = ""
+        if detail_level is DetailLevel.FULL and leader.traits:
+            traits = f"; traits {', '.join(display_name(trait) for trait in leader.traits)}"
         location = ""
         if leader.location_type:
             location = f"; {leader.location_type}"
@@ -404,7 +423,11 @@ def _format_planets(empire: EmpireSummary, limit: int = 6) -> str:
     return " | ".join(parts) + suffix
 
 
-def _format_starbases(empire: EmpireSummary, limit: int = 6) -> str:
+def _format_starbases(
+    empire: EmpireSummary,
+    detail_level: DetailLevel = DetailLevel.STANDARD,
+    limit: int = 6,
+) -> str:
     if not empire.starbases:
         return "尚未解析详情"
     parts = []
@@ -412,16 +435,19 @@ def _format_starbases(empire: EmpireSummary, limit: int = 6) -> str:
         system = _format_name(starbase.system_name) or (
             f"system {starbase.system_id}" if starbase.system_id is not None else "unknown system"
         )
-        modules = (
-            f"; modules {', '.join(compact_name(module) for module in starbase.modules[:3])}"
-            if starbase.modules
-            else ""
-        )
-        buildings = (
-            f"; buildings {', '.join(compact_name(building) for building in starbase.buildings[:2])}"
-            if starbase.buildings
-            else ""
-        )
+        modules = ""
+        buildings = ""
+        if detail_level is DetailLevel.FULL:
+            modules = (
+                f"; modules {', '.join(compact_name(module) for module in starbase.modules)}"
+                if starbase.modules
+                else ""
+            )
+            buildings = (
+                f"; buildings {', '.join(compact_name(building) for building in starbase.buildings)}"
+                if starbase.buildings
+                else ""
+            )
         parts.append(
             f"{system} ({compact_name(starbase.level) if starbase.level else 'unknown'}, power {_format_number(starbase.military_power)}{modules}{buildings})"
         )
@@ -455,7 +481,11 @@ def _format_megastructures_en(empire: EmpireSummary, limit: int = 6) -> str:
     return _format_megastructures(empire, limit=limit)
 
 
-def _format_ship_designs(empire: EmpireSummary, limit: int = 6) -> str:
+def _format_ship_designs(
+    empire: EmpireSummary,
+    detail_level: DetailLevel = DetailLevel.STANDARD,
+    limit: int = 6,
+) -> str:
     if not empire.ship_designs:
         if empire.ship_design_ids:
             return f"已发现 {len(empire.ship_design_ids)} 个设计 ID，尚未解析详情"
@@ -463,14 +493,96 @@ def _format_ship_designs(empire: EmpireSummary, limit: int = 6) -> str:
     parts = []
     for design in empire.ship_designs[:limit]:
         mode = "auto" if design.auto_generated else "manual"
-        components = (
-            f"; components {', '.join(compact_name(component) for component in design.component_templates[:3])}"
-            if design.component_templates
-            else ""
-        )
+        components = ""
+        if detail_level is DetailLevel.FULL and design.component_templates:
+            components = (
+                f"; components {', '.join(compact_name(component) for component in design.component_templates)}"
+            )
         parts.append(
             f"{_format_name(design.name) or design.design_id} "
             f"({compact_name(design.ship_size) if design.ship_size else 'unknown'}, {mode}{components})"
+        )
+    suffix = f" (+{len(empire.ship_designs) - limit})" if len(empire.ship_designs) > limit else ""
+    return " | ".join(parts) + suffix
+
+
+def _format_full_detail_lines(empire: EmpireSummary) -> list[str]:
+    return [
+        f"领袖细节: {_format_leader_details(empire)}",
+        f"恒星基地细节: {_format_starbase_details(empire)}",
+        f"星球建筑/区划细节: {_format_planet_details(empire)}",
+        f"舰船设计细节: {_format_ship_design_details(empire)}",
+    ]
+
+
+def _format_full_detail_lines_en(empire: EmpireSummary) -> list[str]:
+    return [
+        f"Leader details: {_format_leader_details(empire)}",
+        f"Starbase details: {_format_starbase_details(empire)}",
+        f"Planet building/district details: {_format_planet_details(empire)}",
+        f"Ship design details: {_format_ship_design_details(empire)}",
+    ]
+
+
+def _format_leader_details(empire: EmpireSummary, limit: int = 20) -> str:
+    if not empire.leaders:
+        return "not parsed"
+    parts = []
+    for leader in empire.leaders[:limit]:
+        traits = ", ".join(display_name(trait) for trait in leader.traits) if leader.traits else "none"
+        location = leader.location_type or "unknown"
+        if leader.location_id is not None:
+            location += f" {leader.location_id}"
+        parts.append(
+            f"{_format_name(leader.name) or leader.leader_id}: {leader.leader_class or 'unknown'} "
+            f"L{_format_number(leader.level)}, traits {traits}, location {location}"
+        )
+    suffix = f" (+{len(empire.leaders) - limit})" if len(empire.leaders) > limit else ""
+    return " | ".join(parts) + suffix
+
+
+def _format_starbase_details(empire: EmpireSummary, limit: int = 30) -> str:
+    if not empire.starbases:
+        return "not parsed"
+    parts = []
+    for starbase in empire.starbases[:limit]:
+        system = _format_name(starbase.system_name) or str(starbase.system_id or "unknown")
+        modules = ", ".join(compact_name(module) for module in starbase.modules) or "none"
+        buildings = ", ".join(compact_name(building) for building in starbase.buildings) or "none"
+        parts.append(
+            f"{system}: {compact_name(starbase.level) if starbase.level else 'unknown'}, "
+            f"modules {modules}, buildings {buildings}"
+        )
+    suffix = f" (+{len(empire.starbases) - limit})" if len(empire.starbases) > limit else ""
+    return " | ".join(parts) + suffix
+
+
+def _format_planet_details(empire: EmpireSummary, limit: int = 20) -> str:
+    if not empire.planets:
+        return "not parsed"
+    parts = []
+    for planet in empire.planets[:limit]:
+        districts = ", ".join(str(item) for item in planet.districts) or "none"
+        buildings = ", ".join(str(item) for item in planet.buildings) or "none"
+        parts.append(
+            f"{_format_name(planet.name) or planet.planet_id}: districts {districts}; "
+            f"buildings {buildings}; designation {compact_name(planet.designation) if planet.designation else 'unknown'}"
+        )
+    suffix = f" (+{len(empire.planets) - limit})" if len(empire.planets) > limit else ""
+    return " | ".join(parts) + suffix
+
+
+def _format_ship_design_details(empire: EmpireSummary, limit: int = 20) -> str:
+    if not empire.ship_designs:
+        return "not parsed"
+    parts = []
+    for design in empire.ship_designs[:limit]:
+        sections = ", ".join(compact_name(section) for section in design.section_templates) or "none"
+        components = ", ".join(compact_name(component) for component in design.component_templates) or "none"
+        required = ", ".join(compact_name(component) for component in design.required_components) or "none"
+        parts.append(
+            f"{_format_name(design.name) or design.design_id}: {compact_name(design.ship_size) if design.ship_size else 'unknown'}, "
+            f"sections {sections}, components {components}, required {required}"
         )
     suffix = f" (+{len(empire.ship_designs) - limit})" if len(empire.ship_designs) > limit else ""
     return " | ".join(parts) + suffix
@@ -560,10 +672,10 @@ def _build_empire_findings(empire: EmpireSummary) -> list[Finding]:
     ):
         findings.append(
             Finding(
-                title="军事实力为零",
-                severity="high",
-                detail="存档显示当前军事实力和已用舰队容量都是 0。",
-                recommendation="尽快确认是否拆掉了舰队或存档字段未覆盖生物舰船；如果游戏内确实无舰队，应优先恢复基础防卫舰队，避免被邻国、掠夺者或危机事件抓空窗。",
+                title="常备舰队为零，需要结合外交判断",
+                severity="medium",
+                detail="存档显示当前军事实力和已用舰队容量都是 0。这可能是有意节省维护费的和平策略，不应脱离邻国关系、边境形状和星港防御直接判定为危机。",
+                recommendation="后续应结合相邻帝国关系、宿敌/宣称、边境 chokepoint、星港火力和玩家战略目标判断风险；若邻国友好且无敌对接壤，无常备舰队可能是合理选择。",
             )
         )
 
@@ -616,10 +728,10 @@ def _build_empire_findings_en(empire: EmpireSummary) -> list[Finding]:
     ):
         findings.append(
             Finding(
-                title="Military power is zero",
-                severity="high",
-                detail="The save reports both military power and used naval capacity as 0.",
-                recommendation="Confirm whether the player truly has no fleet or whether this save version uses separate fields for biological ships.",
+                title="No standing fleet; evaluate with diplomacy and borders",
+                severity="medium",
+                detail="The save reports both military power and used naval capacity as 0. This can be an intentional upkeep-saving peace strategy, so it should not be treated as a crisis without diplomacy, border shape, and starbase defenses.",
+                recommendation="Evaluate neighboring empire relations, rivalries/claims, chokepoints, starbase firepower, and the player's strategic goal before recommending fleet construction.",
             )
         )
 

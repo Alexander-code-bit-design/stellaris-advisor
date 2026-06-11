@@ -104,6 +104,20 @@ python -m stellaris_advisor --language zh "C:\path\to\save.sav"
 python -m stellaris_advisor --language en "C:\path\to\save.sav"
 ```
 
+Choose report detail level:
+
+选择报告详细程度：
+
+```powershell
+python -m stellaris_advisor --detail-level summary "C:\path\to\save.sav"
+python -m stellaris_advisor --detail-level standard "C:\path\to\save.sav"
+python -m stellaris_advisor --detail-level full "C:\path\to\save.sav"
+```
+
+`summary` keeps the overview compact. `standard` is the default. `full` exposes parsed details such as leader traits, starbase modules/buildings, planet district/building IDs, and ship design components.
+
+`summary` 保持概览简洁。`standard` 是默认值。`full` 会展开已解析的细节，例如领袖特质、恒星基地模块/建筑、星球区划/建筑 ID 和舰船设计组件。
+
 `player_visible` is the default and must not leak hidden AI empire data or undiscovered map information. `omniscient` is reserved for explicit spoiler/debug analysis.
 
 `player_visible` 是默认模式，不应泄露隐藏 AI 帝国数据或未发现地图信息。`omniscient` 仅用于明确的剧透/调试分析。

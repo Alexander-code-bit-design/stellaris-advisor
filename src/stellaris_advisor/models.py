@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from .detail_level import DetailLevel
 from .report_language import ReportLanguage
 from .visibility import VisibilityMode
 
@@ -166,6 +167,7 @@ class Finding:
 class AdvisorReport:
     visibility_mode: VisibilityMode
     language: ReportLanguage
+    detail_level: DetailLevel
     summary: list[str]
     findings: list[Finding]
     next_steps: list[str]

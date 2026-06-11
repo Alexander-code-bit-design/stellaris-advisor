@@ -4,6 +4,7 @@ import argparse
 import sys
 
 from .analyzer import build_report, render_markdown
+from .detail_level import DetailLevel
 from .report_language import ReportLanguage
 from .save_reader import SaveReadError, read_save
 from .visibility import VisibilityMode
@@ -24,6 +25,12 @@ def main(argv: list[str] | None = None) -> int:
         default=ReportLanguage.ZH.value,
         help="Report language. Defaults to zh.",
     )
+    parser.add_argument(
+        "--detail-level",
+        choices=[level.value for level in DetailLevel],
+        default=DetailLevel.STANDARD.value,
+        help="Report detail level. Defaults to standard.",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -36,6 +43,7 @@ def main(argv: list[str] | None = None) -> int:
         save,
         VisibilityMode(args.visibility_mode),
         ReportLanguage(args.language),
+        DetailLevel(args.detail_level),
     )
     print(render_markdown(report))
     return 0

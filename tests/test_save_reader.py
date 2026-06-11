@@ -2,6 +2,7 @@ from pathlib import Path
 from zipfile import ZipFile
 
 from stellaris_advisor.analyzer import build_report, render_markdown
+from stellaris_advisor.detail_level import DetailLevel
 from stellaris_advisor.report_language import ReportLanguage
 from stellaris_advisor.save_reader import read_save
 from stellaris_advisor.visibility import VisibilityMode
@@ -44,6 +45,19 @@ def test_build_report_renders_english_markdown() -> None:
     assert "## Situation Summary" in markdown
     assert "Game version: 3.12.5" in markdown
     assert "## Next Development Steps" in markdown
+
+
+def test_detail_level_controls_report_expansion() -> None:
+    save = read_save(FIXTURE)
+    summary_report = build_report(save, detail_level=DetailLevel.SUMMARY)
+    full_report = build_report(save, detail_level=DetailLevel.FULL)
+
+    summary_markdown = render_markdown(summary_report)
+    full_markdown = render_markdown(full_report)
+
+    assert "领袖概览" not in summary_markdown
+    assert "领袖细节" in full_markdown
+    assert "恒星基地细节" in full_markdown
 
 
 def test_read_player_empire_deep_fields(tmp_path: Path) -> None:

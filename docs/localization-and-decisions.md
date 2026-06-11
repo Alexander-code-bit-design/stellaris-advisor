@@ -27,6 +27,18 @@ Language selection affects:
 
 Language selection must not change the parsed facts.
 
+## Detail levels
+
+The parser should preserve detailed facts even when the report does not display them by default.
+
+Report detail levels:
+
+- `summary`: compact player-facing overview.
+- `standard`: default report with moderate context.
+- `full`: expanded facts for debugging and AI context, including leader traits, starbase modules and buildings, planet district/building IDs, and ship design components.
+
+The assistant should use detailed facts internally when relevant, but should avoid dumping them into normal player-facing summaries.
+
 ## Wiki verification
 
 Wiki data is evidence, not the canonical parser contract. The current public English Stellaris Wiki technology pages are useful for validating player-facing names and mechanics, but may lag behind the current game version. Chinese wiki availability and naming consistency can vary.
