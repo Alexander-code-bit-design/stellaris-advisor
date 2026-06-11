@@ -515,6 +515,8 @@ leaders=
     assert empire.diplomatic_relations[0].borders is True
     assert empire.diplomatic_relations[0].relation_current == -41
     assert empire.diplomatic_relations[0].threat == 12.5
+    assert empire.diplomatic_relations[0].risk_hint == "negative opinion"
+    assert "improve relations" in (empire.diplomatic_relations[0].deescalation_hint or "")
     assert empire.diplomatic_relations[0].modifiers[0].modifier == "opinion_first_contact_hostility"
     assert empire.diplomatic_relations[1].name == "Theta Aliens"
     assert len(empire.first_contacts) == 1
@@ -589,11 +591,11 @@ leaders=
     assert "恒星基地: 总数 2；容量占用 1 / 5" in markdown
     english_markdown = render_markdown(build_report(save, language=ReportLanguage.EN))
     assert "Starbases: total 2; capacity used 1 / 5" in english_markdown
-    assert "外交/接触: 关系 2，已通信 1，敌对 0，接壤 1，进行中首次接触 1" in markdown
+    assert "外交/接触: 关系 2，已通信 1，敌对 0，接壤 1，严重敌对接壤 0，可评估外交降温 1，进行中首次接触 1" in markdown
     assert "可见星图/航道: 已知/相关星系 2，有星港 1，首次接触位置 1，外缘航道候选 2" in markdown
     assert "可见敌对目标: 目标 1，最高军力 456.5，最近殖民地 1 跳" in markdown
     assert "威胁/边境跳数: 来源 2，最近殖民地 1 跳，最近星港 1 跳，最近升级星港 1 跳" in markdown
-    assert "Diplomacy/contacts: relations 2, communications 1, hostile 0, border contacts 1, active first contacts 1" in english_markdown
+    assert "Diplomacy/contacts: relations 2, communications 1, hostile 0, border contacts 1, severe hostile borders 0, de-escalation candidates 1, active first contacts 1" in english_markdown
     assert "Known map/hyperlanes: known/relevant systems 2, starbase systems 1, first-contact locations 1, frontier link candidates 2" in english_markdown
     assert "Visible hostile targets: targets 1, highest power 456.5, nearest colony 1 jumps" in english_markdown
     assert "Threat/border jump distances: sources 2, nearest colony 1 jumps, nearest starbase 1 jumps, nearest upgraded starbase 1 jumps" in english_markdown

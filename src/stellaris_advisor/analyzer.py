@@ -4,7 +4,7 @@ from collections.abc import Iterable
 
 from .detail_level import DetailLevel
 from .display_names import compact_name, display_name
-from .models import AdvisorReport, EmpireSummary, Finding, SaveGame
+from .models import AdvisorReport, DiplomaticRelationSummary, EmpireSummary, Finding, SaveGame
 from .report_language import ReportLanguage
 from .visibility import VisibilityMode
 
@@ -407,6 +407,16 @@ def _format_diplomacy(empire: EmpireSummary) -> str:
     communications = sum(1 for relation in empire.diplomatic_relations if relation.communications)
     hostile = sum(1 for relation in empire.diplomatic_relations if relation.hostile)
     borders = sum(1 for relation in empire.diplomatic_relations if relation.borders)
+    severe_hostile = sum(
+        1
+        for relation in empire.diplomatic_relations
+        if relation.risk_hint == "severe hostile border contact"
+    )
+    deescalation_candidates = sum(
+        1
+        for relation in empire.diplomatic_relations
+        if _is_deescalation_candidate(relation)
+    )
     active_first_contacts = sum(
         1 for contact in empire.first_contacts if contact.status != "finished"
     )
@@ -414,7 +424,8 @@ def _format_diplomacy(empire: EmpireSummary) -> str:
         return "尚未解析"
     return (
         f"关系 {relation_count}，已通信 {communications}，敌对 {hostile}，"
-        f"接壤 {borders}，进行中首次接触 {active_first_contacts}"
+        f"接壤 {borders}，严重敌对接壤 {severe_hostile}，"
+        f"可评估外交降温 {deescalation_candidates}，进行中首次接触 {active_first_contacts}"
     )
 
 
@@ -423,6 +434,16 @@ def _format_diplomacy_en(empire: EmpireSummary) -> str:
     communications = sum(1 for relation in empire.diplomatic_relations if relation.communications)
     hostile = sum(1 for relation in empire.diplomatic_relations if relation.hostile)
     borders = sum(1 for relation in empire.diplomatic_relations if relation.borders)
+    severe_hostile = sum(
+        1
+        for relation in empire.diplomatic_relations
+        if relation.risk_hint == "severe hostile border contact"
+    )
+    deescalation_candidates = sum(
+        1
+        for relation in empire.diplomatic_relations
+        if _is_deescalation_candidate(relation)
+    )
     active_first_contacts = sum(
         1 for contact in empire.first_contacts if contact.status != "finished"
     )
@@ -430,7 +451,20 @@ def _format_diplomacy_en(empire: EmpireSummary) -> str:
         return "not parsed"
     return (
         f"relations {relation_count}, communications {communications}, hostile {hostile}, "
-        f"border contacts {borders}, active first contacts {active_first_contacts}"
+        f"border contacts {borders}, severe hostile borders {severe_hostile}, "
+        f"de-escalation candidates {deescalation_candidates}, active first contacts {active_first_contacts}"
+    )
+
+
+def _is_deescalation_candidate(relation: DiplomaticRelationSummary) -> bool:
+    return bool(
+        relation.communications
+        and (
+            relation.hostile
+            or relation.borders
+            or (relation.relation_current is not None and relation.relation_current < 0)
+            or (relation.threat is not None and relation.threat > 0)
+        )
     )
 
 
@@ -881,7 +915,9 @@ def _format_diplomacy_details(empire: EmpireSummary, limit: int = 20) -> str:
             f"country {relation.country_id} {_format_name(relation.name) or 'unknown'}: "
             f"{'/'.join(flags) or 'no flags'}, opinion {_format_number(relation.relation_current)}, "
             f"trust {_format_number(relation.trust)}, threat {_format_number(relation.threat)}, "
-            f"border_range {_format_number(relation.border_range)}{modifier_text}"
+            f"border_range {_format_number(relation.border_range)}, "
+            f"risk {relation.risk_hint or 'unknown'}, "
+            f"de-escalation {relation.deescalation_hint or 'unknown'}{modifier_text}"
         )
     relation_suffix = (
         f" (+{len(empire.diplomatic_relations) - limit} relations)"

@@ -173,6 +173,8 @@ class DiplomaticRelationSummary:
     threat: float | None = None
     border_range: int | None = None
     shared_rivals: int | None = None
+    risk_hint: str | None = None
+    deescalation_hint: str | None = None
     modifiers: list[OpinionModifierSummary] = field(default_factory=list)
 
 

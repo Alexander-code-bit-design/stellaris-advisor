@@ -233,26 +233,93 @@ def _extract_diplomatic_relations(
         if country_id is None:
             continue
         target_block = extract_numbered_block(countries_block, country_id) or ""
+        contact = _as_optional_bool(find_scalar(relation_block, "contact"))
+        communications = _as_optional_bool(find_scalar(relation_block, "communications"))
+        hostile = _as_optional_bool(find_scalar(relation_block, "hostile"))
+        borders = _as_optional_bool(find_scalar(relation_block, "borders"))
+        relation_current = _as_optional_float(find_scalar(relation_block, "relation_current"))
+        trust = _as_optional_float(find_scalar(relation_block, "trust"))
+        threat = _as_optional_float(find_scalar(relation_block, "threat"))
+        risk_hint, deescalation_hint = _classify_diplomatic_relation(
+            communications=communications,
+            hostile=hostile,
+            borders=borders,
+            relation_current=relation_current,
+            trust=trust,
+            threat=threat,
+        )
         relations.append(
             DiplomaticRelationSummary(
                 country_id=country_id,
                 name=_extract_relation_name(relation_block, target_block),
-                contact=_as_optional_bool(find_scalar(relation_block, "contact")),
-                communications=_as_optional_bool(find_scalar(relation_block, "communications")),
-                hostile=_as_optional_bool(find_scalar(relation_block, "hostile")),
-                borders=_as_optional_bool(find_scalar(relation_block, "borders")),
-                relation_current=_as_optional_float(find_scalar(relation_block, "relation_current")),
+                contact=contact,
+                communications=communications,
+                hostile=hostile,
+                borders=borders,
+                relation_current=relation_current,
                 relation_last_month=_as_optional_float(
                     find_scalar(relation_block, "relation_last_month")
                 ),
-                trust=_as_optional_float(find_scalar(relation_block, "trust")),
-                threat=_as_optional_float(find_scalar(relation_block, "threat")),
+                trust=trust,
+                threat=threat,
                 border_range=_as_optional_int(find_scalar(relation_block, "border_range")),
                 shared_rivals=_as_optional_int(find_scalar(relation_block, "shared_rivals")),
+                risk_hint=risk_hint,
+                deescalation_hint=deescalation_hint,
                 modifiers=_extract_opinion_modifiers(relation_block),
             )
         )
     return relations
+
+
+def _classify_diplomatic_relation(
+    *,
+    communications: bool | None,
+    hostile: bool | None,
+    borders: bool | None,
+    relation_current: float | None,
+    trust: float | None,
+    threat: float | None,
+) -> tuple[str, str]:
+    if communications is False or communications is None:
+        return (
+            "limited intel: communications not established",
+            "finish first contact before assuming diplomatic options",
+        )
+    if hostile and borders:
+        if relation_current is not None and relation_current <= -1000:
+            return (
+                "severe hostile border contact",
+                "diplomacy may be limited; still check improve relations, envoys, trade, and policies before assuming fleet-only response",
+            )
+        return (
+            "hostile border contact",
+            "consider improve relations, favorable trade, envoy assignment, diplomatic stance, and border friction before military build-up",
+        )
+    if hostile:
+        return (
+            "hostile but not parsed as bordering",
+            "de-escalation may be possible if communications and diplomacy actions are available",
+        )
+    if relation_current is not None and relation_current < 0:
+        return (
+            "negative opinion",
+            "consider improve relations or favorable trade if this neighbor matters strategically",
+        )
+    if trust is not None and trust > 0:
+        return (
+            "some trust already present",
+            "maintain or expand cooperative diplomacy if it supports the current strategy",
+        )
+    if threat is not None and threat > 0:
+        return (
+            "threat perception present",
+            "avoid unnecessary provocation and check diplomatic posture before expanding toward this empire",
+        )
+    return (
+        "no obvious diplomatic danger parsed",
+        "military urgency should not be inferred from this relation alone",
+    )
 
 
 def _extract_relation_name(relation_block: str, target_country_block: str) -> str | None:

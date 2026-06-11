@@ -17,6 +17,7 @@ The MVP can already:
 - extract first-pass empire identity fields, including ethics, civics, authority, government type, origin, traditions, ascension perks, edicts, policy flags, council agenda, and owned leader IDs;
 - detect whether pop factions are applicable, unavailable for gestalt empires, or applicable but not yet formed;
 - extract player-visible diplomatic relations and first-contact progress, including communications, hostile/border flags, opinion values, trust, threat, and active first contacts;
+- add first-pass diplomatic risk and de-escalation hints so advice can consider envoys, favorable trade, stance changes, and first-contact completion before military build-up;
 - extract first-pass player-visible known systems and hyperlanes from `galactic_object`, including owned starbase systems, colony systems, first-contact locations, bypasses, and frontier hyperlane candidates;
 - compute first-pass visible jump distances from active first-contact/border sources to the nearest colony, starbase, upgraded starbase, and shipyard;
 - extract player-visible hostile intel entries, including hostile target names, owners, system locations, military power, and their visible jump distances to player assets;
@@ -42,6 +43,7 @@ The MVP can already:
 - 提取第一批帝国身份信息，包括思潮、国民理念、权力制度、政体、起源、传统、飞升、法令、政策标记、内阁议程和拥有的领袖 ID；
 - 判断派系是否适用、格式塔是否不适用，或普通政体是否尚未形成派系；
 - 提取玩家可见的外交关系和首次接触进度，包括是否已通信、敌对/接壤标记、关系值、信任、威胁和进行中的首次接触；
+- 给出第一版外交风险和降温提示，让建议在造舰前先评估使节、有利贸易、外交姿态调整和首次接触完成等路径；
 - 从 `galactic_object` 提取第一版玩家可见星系和超空间航道，包括拥有星港的星系、殖民地星系、首次接触位置、旁路和外缘航道候选；
 - 计算第一版可见跳数：从进行中的首次接触/边境来源到最近殖民地、星港、升级星港和船坞的距离；
 - 提取玩家可见的敌对情报条目，包括敌对目标名称、所有者、所在星系、军事实力，以及它们到玩家资产的可见跳数；

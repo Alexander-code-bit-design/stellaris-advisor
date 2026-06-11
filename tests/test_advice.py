@@ -23,6 +23,7 @@ def test_build_chinese_advice_prompt_includes_visibility_guard() -> None:
     assert "我应该先发展科研还是舰队？" in rendered
     assert "不要把“军事实力为 0”自动判定为极端危机" in rendered
     assert "不要把所有 hostile 目标都当成会主动进攻的敌国舰队" in rendered
+    assert "在建议建造军用舰船之前" in rendered
     assert "普通前哨站不占恒星基地容量" in rendered
     assert "容量占用/上限" in rendered
     assert "戒心永存" in rendered
