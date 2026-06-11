@@ -26,7 +26,9 @@ def test_build_chinese_advice_prompt_includes_visibility_guard() -> None:
     assert "戒心永存" in rendered
     assert "法令" in rendered
     assert "恒星基地" in rendered
-    assert "存档摘要" in rendered
+    assert "存档事实摘要" in rendered
+    assert "发现的问题" not in rendered
+    assert "下一步开发" not in rendered
 
 
 def test_build_english_advice_prompt_uses_english_structure() -> None:
@@ -42,3 +44,5 @@ def test_build_english_advice_prompt_uses_english_structure() -> None:
     assert "Concrete actions" in rendered
     assert "Starbases" in rendered
     assert "Game version: 3.12.5" in rendered
+    assert "Findings" not in rendered
+    assert "Next Development Steps" not in rendered

@@ -6,7 +6,6 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 
-from .analyzer import render_markdown
 from .models import AdvisorReport
 from .report_language import ReportLanguage
 from .visibility import VisibilityMode
@@ -95,9 +94,9 @@ def _chinese_system_prompt(report: AdvisorReport) -> str:
     return f"""
 你是一个谨慎、实战导向、熟悉 Stellaris（群星）机制和中文标准译名的游戏顾问。
 
-你的任务是根据工具提供的存档摘要，判断玩家当前局势，并给出下一步建议。
+你的任务是根据工具提供的存档事实摘要，判断玩家当前局势，并给出下一步建议。
 你必须遵守以下规则：
-- 只使用“存档摘要”中明确给出的事实；不要编造未解析到的数据。
+- 只使用“存档事实摘要”中明确给出的事实；不要编造未解析到的数据。
 - {visibility}
 - 区分“事实”“推断”“建议”。如果缺少外交、边境、敌军或地图信息，必须说明建议置信度有限。
 - 不要把“军事实力为 0”自动判定为极端危机；必须结合邻国态度、接壤关系、战争风险、野怪位置、星港火力和玩家有意节省维护费的策略来判断。
@@ -115,9 +114,9 @@ def _english_system_prompt(report: AdvisorReport) -> str:
     return f"""
 You are a careful, practical Stellaris strategy advisor with strong knowledge of Stellaris mechanics and terminology.
 
-Your task is to read the save summary supplied by the tool, assess the player's situation, and recommend next actions.
+Your task is to read the factual save summary supplied by the tool, assess the player's situation, and recommend next actions.
 Rules:
-- Use only facts explicitly present in the save summary; do not invent unparsed data.
+- Use only facts explicitly present in the factual save summary; do not invent unparsed data.
 - {visibility}
 - Separate facts, inferences, and recommendations. If diplomacy, borders, enemy fleets, or map data are missing, say that confidence is limited.
 - Do not automatically treat 0 fleet power as an extreme crisis. Judge it with diplomacy, border contact, war risk, hostile space fauna, starbase firepower, and the player's deliberate upkeep-saving strategy.
@@ -131,10 +130,10 @@ Rules:
 
 
 def _chinese_user_prompt(report: AdvisorReport, focus: str | None) -> str:
-    rendered_report = render_markdown(report)
+    rendered_report = _render_fact_summary(report)
     focus_line = focus or "请给出当前局势评估、主要风险、经济/科研/传统/舰队优先级，以及接下来 10 年的行动计划。"
     return f"""
-下面是 Stellaris Advisor 从玩家存档中解析出的摘要。
+下面是 Stellaris Advisor 从玩家存档中解析出的事实摘要。
 
 玩家关注点：
 {focus_line}
@@ -155,16 +154,16 @@ def _chinese_user_prompt(report: AdvisorReport, focus: str | None) -> str:
 7. 未来 10 年行动计划：按年份或阶段列具体动作
 8. 需要版本化 wiki/RAG 验证的机制与译名
 
-存档摘要：
+存档事实摘要：
 {rendered_report}
 """
 
 
 def _english_user_prompt(report: AdvisorReport, focus: str | None) -> str:
-    rendered_report = render_markdown(report)
+    rendered_report = _render_fact_summary(report)
     focus_line = focus or "Assess the current situation, major risks, economy/research/tradition/fleet priorities, and a 10-year action plan."
     return f"""
-Below is a save summary parsed by Stellaris Advisor.
+Below is a factual save summary parsed by Stellaris Advisor.
 
 Player focus:
 {focus_line}
@@ -185,9 +184,40 @@ Reply in English using this structure:
 7. 10-year action plan
 8. Version-tagged wiki/RAG checks needed for mechanics and localization
 
-Save summary:
+Factual save summary:
 {rendered_report}
 """
+
+
+def _render_fact_summary(report: AdvisorReport) -> str:
+    is_en = report.language is ReportLanguage.EN
+    lines = [
+        "# Stellaris Advisor Fact Summary",
+        "",
+        f"{'Visibility mode' if is_en else '可见性模式'}: `{report.visibility_mode.value}`",
+        "",
+        f"## {'Parsed Save Facts' if is_en else '已解析存档事实'}",
+    ]
+    if report.visibility_mode is VisibilityMode.PLAYER_VISIBLE:
+        lines.extend(
+            [
+                "",
+                "> This fact summary is generated from player-visible information only; hidden AI intelligence, undiscovered systems, and spoiler data must not be inferred."
+                if is_en
+                else "> 本事实摘要仅基于玩家可见信息；不得推断隐藏 AI 情报、未发现星系或剧透信息。",
+            ]
+        )
+    elif report.visibility_mode is VisibilityMode.OMNISCIENT:
+        lines.extend(
+            [
+                "",
+                "> Warning: omniscient/spoiler mode may include information not normally visible during play."
+                if is_en
+                else "> 警告：当前为全知/剧透模式，可能包含正常游玩不可见的信息。",
+            ]
+        )
+    lines.extend(f"- {item}" for item in report.summary)
+    return "\n".join(lines).strip() + "\n"
 
 
 def _visibility_instruction(mode: VisibilityMode, *, zh: bool) -> str:
