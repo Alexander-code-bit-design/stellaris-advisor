@@ -42,6 +42,7 @@ def build_report(
                 f"政策标记: {_format_id_list(empire.policy_flags, limit=6)}",
                 f"领袖数量: {len(empire.leaders) or len(empire.owned_leaders)}",
                 f"派系状态: {_format_faction_status(empire)}",
+                f"外交/接触: {_format_diplomacy(empire)}",
                 f"殖民地数量: {len(empire.planets) or len(empire.owned_planets)}",
                 f"星球概览: {_format_planets(empire)}",
                 f"恒星基地: {_format_starbase_count(empire)}",
@@ -59,7 +60,7 @@ def build_report(
             ]
         )
         if detail_level is not DetailLevel.SUMMARY:
-            summary.insert(21, f"领袖概览: {_format_leaders(empire, detail_level)}")
+            summary.insert(22, f"领袖概览: {_format_leaders(empire, detail_level)}")
         if empire.monthly_income:
             summary.append(f"月收入概览: {_format_resources(empire.monthly_income)}")
         if detail_level is DetailLevel.FULL:
@@ -160,6 +161,7 @@ def _build_english_report(
                 f"Policy flags: {_format_id_list_en(empire.policy_flags, limit=6)}",
                 f"Leaders: {len(empire.leaders) or len(empire.owned_leaders)}",
                 f"Faction status: {_format_faction_status_en(empire)}",
+                f"Diplomacy/contacts: {_format_diplomacy_en(empire)}",
                 f"Colonies: {len(empire.planets) or len(empire.owned_planets)}",
                 f"Planet overview: {_format_planets_en(empire)}",
                 f"Starbases: {_format_starbase_count_en(empire)}",
@@ -177,7 +179,7 @@ def _build_english_report(
             ]
         )
         if detail_level is not DetailLevel.SUMMARY:
-            summary.insert(21, f"Leader overview: {_format_leaders_en(empire, detail_level)}")
+            summary.insert(22, f"Leader overview: {_format_leaders_en(empire, detail_level)}")
         if empire.monthly_income:
             summary.append(f"Monthly income: {_format_resources(empire.monthly_income)}")
         if detail_level is DetailLevel.FULL:
@@ -390,6 +392,38 @@ def _format_faction_status_en(empire: EmpireSummary) -> str:
     if empire.pop_faction_members == 0:
         return "applicable, but no factions have formed yet"
     return f"applicable, {empire.pop_faction_members} faction members"
+
+
+def _format_diplomacy(empire: EmpireSummary) -> str:
+    relation_count = len(empire.diplomatic_relations)
+    communications = sum(1 for relation in empire.diplomatic_relations if relation.communications)
+    hostile = sum(1 for relation in empire.diplomatic_relations if relation.hostile)
+    borders = sum(1 for relation in empire.diplomatic_relations if relation.borders)
+    active_first_contacts = sum(
+        1 for contact in empire.first_contacts if contact.status != "finished"
+    )
+    if relation_count == 0 and not empire.first_contacts:
+        return "尚未解析"
+    return (
+        f"关系 {relation_count}，已通信 {communications}，敌对 {hostile}，"
+        f"接壤 {borders}，进行中首次接触 {active_first_contacts}"
+    )
+
+
+def _format_diplomacy_en(empire: EmpireSummary) -> str:
+    relation_count = len(empire.diplomatic_relations)
+    communications = sum(1 for relation in empire.diplomatic_relations if relation.communications)
+    hostile = sum(1 for relation in empire.diplomatic_relations if relation.hostile)
+    borders = sum(1 for relation in empire.diplomatic_relations if relation.borders)
+    active_first_contacts = sum(
+        1 for contact in empire.first_contacts if contact.status != "finished"
+    )
+    if relation_count == 0 and not empire.first_contacts:
+        return "not parsed"
+    return (
+        f"relations {relation_count}, communications {communications}, hostile {hostile}, "
+        f"border contacts {borders}, active first contacts {active_first_contacts}"
+    )
 
 
 def _format_leaders(
@@ -643,6 +677,7 @@ def _format_ship_designs_en(
 def _format_full_detail_lines(empire: EmpireSummary) -> list[str]:
     return [
         f"领袖细节: {_format_leader_details(empire)}",
+        f"外交/接触细节: {_format_diplomacy_details(empire)}",
         f"舰队实例细节: {_format_fleet_details(empire)}",
         f"恒星基地细节: {_format_starbase_details(empire)}",
         f"星球建筑/区划细节: {_format_planet_details(empire)}",
@@ -653,6 +688,7 @@ def _format_full_detail_lines(empire: EmpireSummary) -> list[str]:
 def _format_full_detail_lines_en(empire: EmpireSummary) -> list[str]:
     return [
         f"Leader details: {_format_leader_details(empire)}",
+        f"Diplomacy/contact details: {_format_diplomacy_details(empire)}",
         f"Fleet instance details: {_format_fleet_details(empire)}",
         f"Starbase details: {_format_starbase_details(empire)}",
         f"Planet building/district details: {_format_planet_details(empire)}",
@@ -675,6 +711,58 @@ def _format_leader_details(empire: EmpireSummary, limit: int = 20) -> str:
         )
     suffix = f" (+{len(empire.leaders) - limit})" if len(empire.leaders) > limit else ""
     return " | ".join(parts) + suffix
+
+
+def _format_diplomacy_details(empire: EmpireSummary, limit: int = 20) -> str:
+    parts: list[str] = []
+    for relation in empire.diplomatic_relations[:limit]:
+        flags = []
+        if relation.contact:
+            flags.append("contact")
+        if relation.communications:
+            flags.append("communications")
+        if relation.hostile:
+            flags.append("hostile")
+        if relation.borders:
+            flags.append("borders")
+        modifier_text = ""
+        if relation.modifiers:
+            shown_modifiers = ", ".join(
+                f"{compact_name(modifier.modifier)} {_format_number(modifier.value)}"
+                for modifier in relation.modifiers[:3]
+            )
+            modifier_text = f", modifiers {shown_modifiers}"
+        parts.append(
+            f"country {relation.country_id} {_format_name(relation.name) or 'unknown'}: "
+            f"{'/'.join(flags) or 'no flags'}, opinion {_format_number(relation.relation_current)}, "
+            f"trust {_format_number(relation.trust)}, threat {_format_number(relation.threat)}, "
+            f"border_range {_format_number(relation.border_range)}{modifier_text}"
+        )
+    relation_suffix = (
+        f" (+{len(empire.diplomatic_relations) - limit} relations)"
+        if len(empire.diplomatic_relations) > limit
+        else ""
+    )
+    contact_parts = []
+    for contact in empire.first_contacts[:limit]:
+        target = contact.country_id
+        contact_parts.append(
+            f"first_contact {contact.contact_id} {_format_name(contact.name) or 'unknown'}: "
+            f"owner {contact.owner}, country {target}, status {contact.status or 'unknown'}, "
+            f"stage {compact_name(contact.stage) if contact.stage else 'unknown'}, "
+            f"clues {_format_number(contact.clues)}, difficulty {_format_number(contact.difficulty)}, "
+            f"days_left {_format_number(contact.days_left)}, location {_format_number(contact.location_id)}"
+        )
+    contact_suffix = (
+        f" (+{len(empire.first_contacts) - limit} first contacts)"
+        if len(empire.first_contacts) > limit
+        else ""
+    )
+    if not parts and not contact_parts:
+        return "not parsed"
+    relation_text = " | ".join(parts) + relation_suffix if parts else "relations not parsed"
+    contact_text = " | ".join(contact_parts) + contact_suffix if contact_parts else "first contacts not parsed"
+    return f"relations: {relation_text}; first contacts: {contact_text}"
 
 
 def _format_fleet_counts(empire: EmpireSummary) -> str:
@@ -871,12 +959,38 @@ def _build_empire_findings(empire: EmpireSummary) -> list[Finding]:
         and empire.military_power <= 0
         and empire.used_naval_capacity <= 0
     ):
+        hostile_border_contacts = sum(
+            1 for relation in empire.diplomatic_relations if relation.hostile and relation.borders
+        )
+        active_first_contacts = sum(
+            1 for contact in empire.first_contacts if contact.status != "finished"
+        )
+        if hostile_border_contacts:
+            detail = (
+                f"存档显示当前军事实力和已用舰队容量都是 0；同时玩家可见外交关系中有 "
+                f"{hostile_border_contacts} 个敌对且接壤的对象，另有 {active_first_contacts} 个进行中的首次接触。"
+            )
+            recommendation = (
+                "零舰队省维护费策略已经需要重新评估：优先结合该接壤方向的星港火力、超空间 chokepoint、"
+                "敌对对象类型和可见舰队情报决定是否补充最低限度防御舰队。"
+            )
+            severity = "high"
+        else:
+            detail = (
+                "存档显示当前军事实力和已用舰队容量都是 0。这可能是有意节省维护费的和平策略，"
+                f"当前已解析到 {len(empire.diplomatic_relations)} 条外交关系和 {active_first_contacts} 个进行中的首次接触。"
+            )
+            recommendation = (
+                "继续结合相邻帝国关系、宿敌/宣称、边境 chokepoint、星港火力和玩家战略目标判断风险；"
+                "若邻国友好且无敌对接壤，无常备舰队可能是合理选择。"
+            )
+            severity = "medium"
         findings.append(
             Finding(
                 title="常备舰队为零，需要结合外交判断",
-                severity="medium",
-                detail="存档显示当前军事实力和已用舰队容量都是 0。这可能是有意节省维护费的和平策略，不应脱离邻国关系、边境形状和星港防御直接判定为危机。",
-                recommendation="后续应结合相邻帝国关系、宿敌/宣称、边境 chokepoint、星港火力和玩家战略目标判断风险；若邻国友好且无敌对接壤，无常备舰队可能是合理选择。",
+                severity=severity,
+                detail=detail,
+                recommendation=recommendation,
             )
         )
 
@@ -927,12 +1041,39 @@ def _build_empire_findings_en(empire: EmpireSummary) -> list[Finding]:
         and empire.military_power <= 0
         and empire.used_naval_capacity <= 0
     ):
+        hostile_border_contacts = sum(
+            1 for relation in empire.diplomatic_relations if relation.hostile and relation.borders
+        )
+        active_first_contacts = sum(
+            1 for contact in empire.first_contacts if contact.status != "finished"
+        )
+        if hostile_border_contacts:
+            detail = (
+                f"The save reports both military power and used naval capacity as 0; visible diplomacy also shows "
+                f"{hostile_border_contacts} hostile border contact(s), with {active_first_contacts} active first contact(s)."
+            )
+            recommendation = (
+                "Re-evaluate the upkeep-saving zero-fleet strategy with starbase firepower, hyperlane chokepoints, "
+                "hostile contact type, and visible fleet intelligence before deciding on a minimum defensive fleet."
+            )
+            severity = "high"
+        else:
+            detail = (
+                "The save reports both military power and used naval capacity as 0. This can be an intentional "
+                f"upkeep-saving peace strategy; {len(empire.diplomatic_relations)} diplomatic relation(s) and "
+                f"{active_first_contacts} active first contact(s) were parsed."
+            )
+            recommendation = (
+                "Evaluate neighboring relations, rivalries/claims, chokepoints, starbase firepower, and the player's "
+                "strategic goal before recommending fleet construction."
+            )
+            severity = "medium"
         findings.append(
             Finding(
                 title="No standing fleet; evaluate with diplomacy and borders",
-                severity="medium",
-                detail="The save reports both military power and used naval capacity as 0. This can be an intentional upkeep-saving peace strategy, so it should not be treated as a crisis without diplomacy, border shape, and starbase defenses.",
-                recommendation="Evaluate neighboring empire relations, rivalries/claims, chokepoints, starbase firepower, and the player's strategic goal before recommending fleet construction.",
+                severity=severity,
+                detail=detail,
+                recommendation=recommendation,
             )
         )
 

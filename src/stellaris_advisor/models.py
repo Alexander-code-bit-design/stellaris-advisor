@@ -152,6 +152,47 @@ class ShipDesignSummary:
 
 
 @dataclass(slots=True)
+class OpinionModifierSummary:
+    modifier: str
+    value: float | None = None
+    start_date: str | None = None
+    decay: bool | None = None
+
+
+@dataclass(slots=True)
+class DiplomaticRelationSummary:
+    country_id: int
+    name: str | None = None
+    contact: bool | None = None
+    communications: bool | None = None
+    hostile: bool | None = None
+    borders: bool | None = None
+    relation_current: float | None = None
+    relation_last_month: float | None = None
+    trust: float | None = None
+    threat: float | None = None
+    border_range: int | None = None
+    shared_rivals: int | None = None
+    modifiers: list[OpinionModifierSummary] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class FirstContactSummary:
+    contact_id: int
+    owner: int | None = None
+    country_id: int | None = None
+    name: str | None = None
+    location_id: int | None = None
+    leader_id: int | None = None
+    date: str | None = None
+    days_left: float | None = None
+    difficulty: int | None = None
+    clues: int | None = None
+    stage: str | None = None
+    status: str | None = None
+
+
+@dataclass(slots=True)
 class EmpireSummary:
     country_id: int
     name: str | None = None
@@ -182,6 +223,8 @@ class EmpireSummary:
     megastructures: list[MegastructureSummary] = field(default_factory=list)
     ship_design_ids: list[int] = field(default_factory=list)
     ship_designs: list[ShipDesignSummary] = field(default_factory=list)
+    diplomatic_relations: list[DiplomaticRelationSummary] = field(default_factory=list)
+    first_contacts: list[FirstContactSummary] = field(default_factory=list)
     technologies: dict[str, int] = field(default_factory=dict)
     monthly_income: dict[str, float] = field(default_factory=dict)
     fleet_size: float | None = None

@@ -148,6 +148,51 @@ def iter_numbered_blocks(text: str) -> Iterator[tuple[int, str]]:
         index += 1
 
 
+def iter_named_blocks(text: str, key: str) -> Iterator[str]:
+    """Yield top-level repeated `key={...}` blocks from a parent block."""
+    index = 0
+    depth = 0
+    in_string = False
+    escaped = False
+    pattern = re.compile(r"[ \t]*" + re.escape(key) + r"\s*=\s*\{")
+    while index < len(text):
+        char = text[index]
+        if in_string:
+            if char == "\\" and not escaped:
+                escaped = True
+                index += 1
+                continue
+            if char == '"' and not escaped:
+                in_string = False
+            escaped = False
+            index += 1
+            continue
+
+        if char == '"':
+            in_string = True
+            index += 1
+            continue
+        if char == "{":
+            depth += 1
+            index += 1
+            continue
+        if char == "}":
+            depth -= 1
+            index += 1
+            continue
+
+        if depth == 0 and (index == 0 or text[index - 1] == "\n"):
+            match = pattern.match(text[index:])
+            if match:
+                open_index = index + match.end() - 1
+                close_index = find_matching_brace(text, open_index)
+                yield text[open_index + 1 : close_index]
+                index = close_index + 1
+                continue
+
+        index += 1
+
+
 def find_matching_brace(text: str, open_index: int) -> int:
     depth = 0
     in_string = False

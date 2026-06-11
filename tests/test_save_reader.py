@@ -114,6 +114,40 @@ country=
             { edict="farming_subsidies" }
             { edict="drone_overdrive" }
         }
+        relations_manager=
+        {
+            relation=
+            {
+                owner=0
+                country=42
+                contact=yes
+                communications=yes
+                borders=yes
+                shared_rivals=1
+                border_range=0
+                threat=12.5
+                trust=4
+                relation_current=-41
+                relation_last_month=-39
+                modifier=
+                {
+                    modifier="opinion_first_contact_hostility"
+                    value=-25
+                }
+            }
+            relation=
+            {
+                owner=0
+                country=43
+                contact=yes
+                pre_communications_name=
+                {
+                    key="Theta Aliens"
+                    literal=yes
+                }
+                relation_current=10
+            }
+        }
         standard_pop_factions_module=
         {
             total_faction_members_power=0
@@ -137,6 +171,30 @@ country=
                     }
                 }
             }
+        }
+    }
+    42=
+    {
+        name={ key="Neighbor Republic" literal=yes }
+    }
+}
+first_contacts=
+{
+    contacts=
+    {
+        8=
+        {
+            owner=0
+            country=43
+            name={ key="Theta Aliens" literal=yes }
+            location=77
+            leader=11
+            date="2253.08.01"
+            days_left=24
+            difficulty=7
+            clues=3
+            stage="default_stage_2"
+            status=in_progress
         }
     }
 }
@@ -393,6 +451,20 @@ leaders=
     assert empire.ascension_perks == ["ap_technological_ascendancy"]
     assert empire.edicts == ["farming_subsidies", "drone_overdrive"]
     assert empire.policy_flags == ["diplo_stance_isolationist", "unrestricted_wars"]
+    assert len(empire.diplomatic_relations) == 2
+    assert empire.diplomatic_relations[0].country_id == 42
+    assert empire.diplomatic_relations[0].name == "Neighbor Republic"
+    assert empire.diplomatic_relations[0].communications is True
+    assert empire.diplomatic_relations[0].borders is True
+    assert empire.diplomatic_relations[0].relation_current == -41
+    assert empire.diplomatic_relations[0].threat == 12.5
+    assert empire.diplomatic_relations[0].modifiers[0].modifier == "opinion_first_contact_hostility"
+    assert empire.diplomatic_relations[1].name == "Theta Aliens"
+    assert len(empire.first_contacts) == 1
+    assert empire.first_contacts[0].contact_id == 8
+    assert empire.first_contacts[0].country_id == 43
+    assert empire.first_contacts[0].status == "in_progress"
+    assert empire.first_contacts[0].clues == 3
     assert empire.owned_leaders == [10, 11, 12]
     assert len(empire.leaders) == 2
     assert empire.leaders[0].name == "Leader One"
@@ -434,6 +506,8 @@ leaders=
     assert "恒星基地: 总数 2；容量占用 1 / 5" in markdown
     english_markdown = render_markdown(build_report(save, language=ReportLanguage.EN))
     assert "Starbases: total 2; capacity used 1 / 5" in english_markdown
+    assert "外交/接触: 关系 2，已通信 1，敌对 0，接壤 1，进行中首次接触 1" in markdown
+    assert "Diplomacy/contacts: relations 2, communications 1, hostile 0, border contacts 1, active first contacts 1" in english_markdown
     assert len(empire.megastructures) == 1
     assert empire.megastructures[0].megastructure_type == "grand_archive_0"
     assert empire.megastructures[0].system_id == 77

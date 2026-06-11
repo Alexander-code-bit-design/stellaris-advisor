@@ -11,6 +11,7 @@ from .clausewitz import (
     extract_top_level_block,
     find_all_scalars,
     find_scalar,
+    iter_named_blocks,
     iter_numbered_blocks,
     parse_indexed_value_block,
     parse_int_list_block,
@@ -22,10 +23,13 @@ from .clausewitz import (
 from .models import (
     BuildingSummary,
     DistrictSummary,
+    DiplomaticRelationSummary,
     EmpireSummary,
     FleetSummary,
+    FirstContactSummary,
     LeaderSummary,
     MegastructureSummary,
+    OpinionModifierSummary,
     PlanetSummary,
     SaveGame,
     SaveMetadata,
@@ -134,6 +138,7 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
     policy_flags_block = extract_block(country_block, "policy_flags")
     owned_leaders_block = extract_block(country_block, "owned_leaders")
     owned_fleets_block = extract_block(country_block, "owned_fleets")
+    relations_manager_block = extract_block(country_block, "relations_manager") or ""
     ship_design_collection_block = extract_block(country_block, "ship_design_collection") or ""
     ship_design_ids_block = extract_block(ship_design_collection_block, "ship_design")
     owned_leaders = parse_int_list_block(owned_leaders_block or "")
@@ -181,6 +186,8 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
         megastructures=_extract_megastructures(gamestate_text, country_id),
         ship_design_ids=ship_design_ids,
         ship_designs=_extract_ship_designs(gamestate_text, ship_design_ids),
+        diplomatic_relations=_extract_diplomatic_relations(relations_manager_block, gamestate_text),
+        first_contacts=_extract_first_contacts(gamestate_text, country_id),
         technologies=_extract_technologies(country_block),
         monthly_income=monthly_income,
         fleet_size=_as_optional_float(find_scalar(country_block, "fleet_size")),
@@ -191,6 +198,94 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
         economy_power=_as_optional_float(find_scalar(country_block, "economy_power")),
         victory_rank=_as_optional_int(find_scalar(country_block, "victory_rank")),
     )
+
+
+def _extract_diplomatic_relations(
+    relations_manager_block: str, gamestate_text: str
+) -> list[DiplomaticRelationSummary]:
+    countries_block = extract_top_level_block(gamestate_text, "country") or ""
+    relations: list[DiplomaticRelationSummary] = []
+    for relation_block in iter_named_blocks(relations_manager_block, "relation"):
+        country_id = _as_optional_int(find_scalar(relation_block, "country"))
+        if country_id is None:
+            continue
+        target_block = extract_numbered_block(countries_block, country_id) or ""
+        relations.append(
+            DiplomaticRelationSummary(
+                country_id=country_id,
+                name=_extract_relation_name(relation_block, target_block),
+                contact=_as_optional_bool(find_scalar(relation_block, "contact")),
+                communications=_as_optional_bool(find_scalar(relation_block, "communications")),
+                hostile=_as_optional_bool(find_scalar(relation_block, "hostile")),
+                borders=_as_optional_bool(find_scalar(relation_block, "borders")),
+                relation_current=_as_optional_float(find_scalar(relation_block, "relation_current")),
+                relation_last_month=_as_optional_float(
+                    find_scalar(relation_block, "relation_last_month")
+                ),
+                trust=_as_optional_float(find_scalar(relation_block, "trust")),
+                threat=_as_optional_float(find_scalar(relation_block, "threat")),
+                border_range=_as_optional_int(find_scalar(relation_block, "border_range")),
+                shared_rivals=_as_optional_int(find_scalar(relation_block, "shared_rivals")),
+                modifiers=_extract_opinion_modifiers(relation_block),
+            )
+        )
+    return relations
+
+
+def _extract_relation_name(relation_block: str, target_country_block: str) -> str | None:
+    if _as_optional_bool(find_scalar(relation_block, "communications")):
+        return _extract_localized_name(target_country_block) or _extract_localized_name(relation_block)
+    pre_communications_block = extract_block(relation_block, "pre_communications_name") or ""
+    return (
+        _as_optional_str(find_scalar(pre_communications_block, "key"))
+        or _extract_localized_name(pre_communications_block)
+        or _extract_localized_name(relation_block)
+    )
+
+
+def _extract_opinion_modifiers(relation_block: str) -> list[OpinionModifierSummary]:
+    modifiers: list[OpinionModifierSummary] = []
+    for modifier_block in iter_named_blocks(relation_block, "modifier"):
+        modifier = _as_optional_str(find_scalar(modifier_block, "modifier"))
+        if modifier is None:
+            continue
+        modifiers.append(
+            OpinionModifierSummary(
+                modifier=modifier,
+                value=_as_optional_float(find_scalar(modifier_block, "value")),
+                start_date=_as_optional_str(find_scalar(modifier_block, "start_date")),
+                decay=_as_optional_bool(find_scalar(modifier_block, "decay")),
+            )
+        )
+    return modifiers
+
+
+def _extract_first_contacts(gamestate_text: str, player_country_id: int) -> list[FirstContactSummary]:
+    first_contacts_block = extract_top_level_block(gamestate_text, "first_contacts") or ""
+    contacts_block = extract_block(first_contacts_block, "contacts") or ""
+    contacts: list[FirstContactSummary] = []
+    for contact_id, contact_block in iter_numbered_blocks(contacts_block):
+        owner = _as_optional_int(find_scalar(contact_block, "owner"))
+        country_id = _as_optional_int(find_scalar(contact_block, "country"))
+        if owner != player_country_id and country_id != player_country_id:
+            continue
+        contacts.append(
+            FirstContactSummary(
+                contact_id=contact_id,
+                owner=owner,
+                country_id=country_id,
+                name=_extract_localized_name(contact_block),
+                location_id=_as_optional_int(find_scalar(contact_block, "location")),
+                leader_id=_as_optional_int(find_scalar(contact_block, "leader")),
+                date=_as_optional_str(find_scalar(contact_block, "date")),
+                days_left=_as_optional_float(find_scalar(contact_block, "days_left")),
+                difficulty=_as_optional_int(find_scalar(contact_block, "difficulty")),
+                clues=_as_optional_int(find_scalar(contact_block, "clues")),
+                stage=_as_optional_str(find_scalar(contact_block, "stage")),
+                status=_as_optional_str(find_scalar(contact_block, "status")),
+            )
+        )
+    return contacts
 
 
 def _extract_fleets(gamestate_text: str, owned_fleets: list[int]) -> list[FleetSummary]:
