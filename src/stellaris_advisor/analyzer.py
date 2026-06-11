@@ -44,7 +44,7 @@ def build_report(
                 f"派系状态: {_format_faction_status(empire)}",
                 f"殖民地数量: {len(empire.planets) or len(empire.owned_planets)}",
                 f"星球概览: {_format_planets(empire)}",
-                f"恒星基地: {len(empire.starbases)} / {_format_number(empire.starbase_capacity)}",
+                f"恒星基地: {_format_starbase_count(empire)}",
                 f"恒星基地概览: {_format_starbases(empire, detail_level)}",
                 f"舰队实例: {_format_fleet_counts(empire)}",
                 f"巨型结构: {_format_megastructures(empire)}",
@@ -162,7 +162,7 @@ def _build_english_report(
                 f"Faction status: {_format_faction_status_en(empire)}",
                 f"Colonies: {len(empire.planets) or len(empire.owned_planets)}",
                 f"Planet overview: {_format_planets_en(empire)}",
-                f"Starbases: {len(empire.starbases)} / {_format_number_en(empire.starbase_capacity)}",
+                f"Starbases: {_format_starbase_count_en(empire)}",
                 f"Starbase overview: {_format_starbases_en(empire, detail_level)}",
                 f"Fleet instances: {_format_fleet_counts_en(empire)}",
                 f"Megastructures: {_format_megastructures_en(empire)}",
@@ -484,6 +484,33 @@ def _format_planets_en(empire: EmpireSummary, limit: int = 6) -> str:
         parts.append(f"{_format_name(planet.name) or planet.planet_id} ({', '.join(stats)})")
     suffix = f" (+{len(empire.planets) - limit})" if len(empire.planets) > limit else ""
     return " | ".join(parts) + suffix
+
+
+def _format_starbase_count(empire: EmpireSummary) -> str:
+    capacity_used = _starbase_capacity_used(empire)
+    return (
+        f"总数 {len(empire.starbases)}；"
+        f"容量占用 {capacity_used} / {_format_number(empire.starbase_capacity)}"
+    )
+
+
+def _format_starbase_count_en(empire: EmpireSummary) -> str:
+    capacity_used = _starbase_capacity_used(empire)
+    return (
+        f"total {len(empire.starbases)}; "
+        f"capacity used {capacity_used} / {_format_number_en(empire.starbase_capacity)}"
+    )
+
+
+def _starbase_capacity_used(empire: EmpireSummary) -> int:
+    return sum(1 for starbase in empire.starbases if _uses_starbase_capacity(starbase.level))
+
+
+def _uses_starbase_capacity(level: str | None) -> bool:
+    if level is None:
+        return False
+    normalized = level.strip('"')
+    return normalized not in {"starbase_level_outpost", "outpost"}
 
 
 def _format_starbases(

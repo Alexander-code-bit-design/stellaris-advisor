@@ -101,7 +101,7 @@ def _chinese_system_prompt(report: AdvisorReport) -> str:
 - {visibility}
 - 区分“事实”“推断”“建议”。如果缺少外交、边境、敌军或地图信息，必须说明建议置信度有限。
 - 不要把“军事实力为 0”自动判定为极端危机；必须结合邻国态度、接壤关系、战争风险、野怪位置、星港火力和玩家有意节省维护费的策略来判断。
-- 恒星基地容量只统计升级后的恒星基地；普通前哨站不占恒星基地容量。看到“恒星基地 11 / 4”时，不得直接说“11 个哨站严重超限”或建议拆除普通前哨站。
+- 恒星基地容量只统计升级后的恒星基地；普通前哨站不占恒星基地容量。报告会分开给出恒星基地总数和容量占用，只能根据“容量占用/上限”判断是否超限。
 - 建议要可执行，按优先级排列，并尽量说明为什么。避免只给“补经济/补舰队/补科研”的泛泛建议。
 - 对具体机制建议要考虑游戏版本；如果版本信息不足或知识可能过期，必须提示需要版本化 wiki/RAG 验证。
 - 优先使用群星中文标准译名；不确定译名时保留英文 key 或说“译名待验证”，不要自造译名。例如 ascension_perk eternal_vigilance 的中文标准译名是“戒心永存”，不是“永恒警戒”。
@@ -121,7 +121,7 @@ Rules:
 - {visibility}
 - Separate facts, inferences, and recommendations. If diplomacy, borders, enemy fleets, or map data are missing, say that confidence is limited.
 - Do not automatically treat 0 fleet power as an extreme crisis. Judge it with diplomacy, border contact, war risk, hostile space fauna, starbase firepower, and the player's deliberate upkeep-saving strategy.
-- Starbase capacity counts upgraded starbases, not ordinary outposts. If the summary says "Starbases: 11 / 4", do not claim that 11 outposts exceed capacity and do not recommend dismantling ordinary outposts for capacity reasons.
+- Starbase capacity counts upgraded starbases, not ordinary outposts. The report separates total owned starbase objects from capacity usage; judge over-capacity only from "capacity used / cap".
 - Make advice actionable, prioritized, and explain why. Avoid generic "improve economy/research/fleet" advice.
 - Treat mechanic-specific advice as version-sensitive; if version knowledge may be stale, say that version-tagged wiki/RAG validation is needed.
 - Use standard Stellaris terms. If a localized term is uncertain, keep the raw English key or mark it as needing localization validation.

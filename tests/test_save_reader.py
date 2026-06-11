@@ -92,7 +92,7 @@ country=
         }
         policy_flags={ "diplo_stance_isolationist" "unrestricted_wars" }
         owned_leaders={ 10 11 12 }
-        owned_fleets={ { fleet=100 } { fleet=101 } }
+        owned_fleets={ { fleet=100 } { fleet=101 } { fleet=999 } }
         starbase_capacity=5
         ship_design_collection=
         {
@@ -232,7 +232,7 @@ galactic_object=
     77=
     {
         name={ key="Test System" }
-        starbases={ 5 }
+        starbases={ 5 6 }
     }
 }
 starbase_mgr=
@@ -407,8 +407,8 @@ leaders=
     assert empire.leaders[1].traits == ["leader_trait_spark_of_genius"]
     assert empire.pop_factions_applicable is False
     assert empire.pop_faction_members == 0
-    assert empire.owned_fleets == [100, 101]
-    assert len(empire.fleets) == 1
+    assert empire.owned_fleets == [100, 101, 999]
+    assert len(empire.fleets) == 2
     assert empire.fleets[0].fleet_id == 100
     assert empire.fleets[0].ship_class == "shipclass_starbase"
     assert empire.fleets[0].station is True
@@ -418,7 +418,7 @@ leaders=
     assert empire.fleets[0].ships[0].design_id == 200
     assert empire.fleets[0].ships[0].hit_points == 1000
     assert empire.starbase_capacity == 5
-    assert len(empire.starbases) == 1
+    assert len(empire.starbases) == 2
     assert empire.starbases[0].starbase_id == 5
     assert empire.starbases[0].system_id == 77
     assert empire.starbases[0].system_name == "Test System"
@@ -427,6 +427,13 @@ leaders=
     assert empire.starbases[0].buildings == ["crew_quarters"]
     assert empire.starbases[0].fleet_id == 100
     assert empire.starbases[0].military_power == 123.5
+    assert empire.starbases[1].starbase_id == 6
+    assert empire.starbases[1].level == "starbase_level_outpost"
+    report = build_report(save)
+    markdown = render_markdown(report)
+    assert "恒星基地: 总数 2；容量占用 1 / 5" in markdown
+    english_markdown = render_markdown(build_report(save, language=ReportLanguage.EN))
+    assert "Starbases: total 2; capacity used 1 / 5" in english_markdown
     assert len(empire.megastructures) == 1
     assert empire.megastructures[0].megastructure_type == "grand_archive_0"
     assert empire.megastructures[0].system_id == 77
