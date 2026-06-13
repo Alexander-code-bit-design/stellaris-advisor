@@ -23,6 +23,8 @@ from .clausewitz import (
     sum_nested_resource_blocks,
 )
 from .models import (
+    AnomalySummary,
+    AstralActionSummary,
     BuildingSummary,
     DistrictSummary,
     DiplomaticRelationSummary,
@@ -38,6 +40,7 @@ from .models import (
     SaveMetadata,
     ShipSummary,
     ShipDesignSummary,
+    SpecialProjectSummary,
     StarbaseSummary,
     StrategicPathSummary,
     SystemSummary,
@@ -204,6 +207,9 @@ def _extract_player_empire(gamestate_text: str, country_id: int | None) -> Empir
         megastructures=_extract_megastructures(gamestate_text, country_id),
         ship_design_ids=ship_design_ids,
         ship_designs=_extract_ship_designs(gamestate_text, ship_design_ids),
+        anomalies=_extract_anomalies(gamestate_text, country_block, country_id),
+        special_projects=_extract_special_projects(gamestate_text, country_block, country_id),
+        astral_actions=_extract_astral_actions(gamestate_text, country_block, country_id),
         diplomatic_relations=_extract_diplomatic_relations(relations_manager_block, gamestate_text),
         first_contacts=first_contacts,
         known_systems=known_systems,
@@ -838,6 +844,152 @@ def _extract_technologies(country_block: str) -> dict[str, int]:
     return technologies
 
 
+def _extract_anomalies(
+    gamestate_text: str, country_block: str, country_id: int
+) -> list[AnomalySummary]:
+    referenced_ids = _extract_referenced_ids(
+        country_block,
+        ["anomalies", "anomaly", "owned_anomalies", "active_anomalies"],
+        ["anomaly"],
+    )
+    summaries: list[AnomalySummary] = []
+    for anomaly_id, anomaly_block in _iter_candidate_blocks(
+        gamestate_text, ["anomalies", "anomaly"]
+    ):
+        owner = _as_optional_int(_first_scalar(anomaly_block, ["owner", "country", "target_country"]))
+        if not _is_player_relevant(owner, country_id, anomaly_id, referenced_ids):
+            continue
+        coordinate_block = extract_block(anomaly_block, "coordinate") or ""
+        summaries.append(
+            AnomalySummary(
+                anomaly_id=anomaly_id,
+                category=_as_optional_str(
+                    _first_scalar(anomaly_block, ["category", "type", "anomaly_category"])
+                ),
+                name=_extract_localized_name(anomaly_block),
+                owner=owner,
+                system_id=_as_optional_int(
+                    _first_scalar(anomaly_block, ["system", "solar_system", "galactic_object"])
+                    or find_scalar(coordinate_block, "origin")
+                ),
+                planet_id=_as_optional_int(_first_scalar(anomaly_block, ["planet", "target"])),
+                assigned_leader_id=_as_optional_int(
+                    _first_scalar(anomaly_block, ["leader", "scientist", "assigned_leader"])
+                ),
+                difficulty=_as_optional_int(
+                    _first_scalar(anomaly_block, ["difficulty", "level", "skill"])
+                ),
+                progress=_as_optional_float(
+                    _first_scalar(anomaly_block, ["progress", "days", "research_progress"])
+                ),
+                days_left=_as_optional_float(
+                    _first_scalar(anomaly_block, ["days_left", "time_left", "remaining_days"])
+                ),
+                status=_as_optional_str(
+                    _first_scalar(anomaly_block, ["status", "state", "stage"])
+                ),
+            )
+        )
+    return summaries
+
+
+def _extract_special_projects(
+    gamestate_text: str, country_block: str, country_id: int
+) -> list[SpecialProjectSummary]:
+    referenced_ids = _extract_referenced_ids(
+        country_block,
+        ["special_projects", "special_project", "projects", "active_special_projects"],
+        ["special_project", "project"],
+    )
+    summaries: list[SpecialProjectSummary] = []
+    for project_id, project_block in _iter_candidate_blocks(
+        gamestate_text, ["special_projects", "special_project", "projects"]
+    ):
+        owner = _as_optional_int(_first_scalar(project_block, ["owner", "country", "target_country"]))
+        if not _is_player_relevant(owner, country_id, project_id, referenced_ids):
+            continue
+        coordinate_block = extract_block(project_block, "coordinate") or ""
+        summaries.append(
+            SpecialProjectSummary(
+                project_id=project_id,
+                project_type=_as_optional_str(
+                    _first_scalar(project_block, ["type", "project", "key", "special_project"])
+                ),
+                name=_extract_localized_name(project_block),
+                owner=owner,
+                system_id=_as_optional_int(
+                    _first_scalar(project_block, ["system", "solar_system", "galactic_object"])
+                    or find_scalar(coordinate_block, "origin")
+                ),
+                planet_id=_as_optional_int(_first_scalar(project_block, ["planet", "target"])),
+                location_id=_as_optional_int(
+                    _first_scalar(project_block, ["location", "site", "object"])
+                ),
+                assigned_leader_id=_as_optional_int(
+                    _first_scalar(project_block, ["leader", "scientist", "assigned_leader"])
+                ),
+                progress=_as_optional_float(
+                    _first_scalar(project_block, ["progress", "days", "research_progress"])
+                ),
+                days_left=_as_optional_float(
+                    _first_scalar(project_block, ["days_left", "time_left", "remaining_days"])
+                ),
+                status=_as_optional_str(
+                    _first_scalar(project_block, ["status", "state", "stage"])
+                ),
+            )
+        )
+    return summaries
+
+
+def _extract_astral_actions(
+    gamestate_text: str, country_block: str, country_id: int
+) -> list[AstralActionSummary]:
+    referenced_ids = _extract_referenced_ids(
+        country_block,
+        ["astral_actions", "astral_action", "available_astral_actions"],
+        ["astral_action", "action"],
+    )
+    summaries: list[AstralActionSummary] = []
+    for action_id, action_block in _iter_candidate_blocks(
+        gamestate_text, ["astral_actions", "astral_action"]
+    ):
+        owner = _as_optional_int(_first_scalar(action_block, ["owner", "country", "target_country"]))
+        if not _is_player_relevant(owner, country_id, action_id, referenced_ids):
+            continue
+        coordinate_block = extract_block(action_block, "coordinate") or ""
+        summaries.append(
+            AstralActionSummary(
+                action_id=action_id,
+                action_type=_as_optional_str(
+                    _first_scalar(action_block, ["type", "action", "key", "astral_action"])
+                ),
+                name=_extract_localized_name(action_block),
+                owner=owner,
+                system_id=_as_optional_int(
+                    _first_scalar(action_block, ["system", "solar_system", "galactic_object"])
+                    or find_scalar(coordinate_block, "origin")
+                ),
+                rift_id=_as_optional_int(
+                    _first_scalar(action_block, ["rift", "astral_rift", "site"])
+                ),
+                assigned_leader_id=_as_optional_int(
+                    _first_scalar(action_block, ["leader", "scientist", "assigned_leader"])
+                ),
+                progress=_as_optional_float(
+                    _first_scalar(action_block, ["progress", "days", "research_progress"])
+                ),
+                days_left=_as_optional_float(
+                    _first_scalar(action_block, ["days_left", "time_left", "remaining_days"])
+                ),
+                status=_as_optional_str(
+                    _first_scalar(action_block, ["status", "state", "stage"])
+                ),
+            )
+        )
+    return summaries
+
+
 def _extract_section_templates(design_block: str) -> list[str]:
     sections: list[str] = []
     for section_match in re.finditer(r"(?m)^\s*section\s*=", design_block):
@@ -1087,6 +1239,56 @@ def _extract_localized_name(block: str) -> str | None:
             return " ".join(variable_keys)
     key = find_scalar(name_block, "key")
     return _as_optional_str(key)
+
+
+def _iter_candidate_blocks(
+    gamestate_text: str, table_names: list[str]
+) -> list[tuple[int, str]]:
+    blocks: list[tuple[int, str]] = []
+    seen: set[tuple[str, int]] = set()
+    for table_name in table_names:
+        table = extract_top_level_block(gamestate_text, table_name)
+        if table is None:
+            continue
+        for item_id, item_block in iter_numbered_blocks(table):
+            key = (table_name, item_id)
+            if key in seen:
+                continue
+            seen.add(key)
+            blocks.append((item_id, item_block))
+    return blocks
+
+
+def _extract_referenced_ids(
+    block: str, block_names: list[str], scalar_names: list[str]
+) -> set[int]:
+    ids: set[int] = set()
+    for block_name in block_names:
+        nested = extract_block(block, block_name)
+        if nested:
+            ids.update(parse_int_list_block(nested))
+            for scalar_name in scalar_names:
+                ids.update(
+                    item
+                    for item in (_as_optional_int(value) for value in find_all_scalars(nested, scalar_name))
+                    if item is not None
+                )
+    for scalar_name in scalar_names:
+        ids.update(
+            item
+            for item in (_as_optional_int(value) for value in find_all_scalars(block, scalar_name))
+            if item is not None
+        )
+    ids.discard(4294967295)
+    return ids
+
+
+def _is_player_relevant(
+    owner: int | None, country_id: int, item_id: int, referenced_ids: set[int]
+) -> bool:
+    if owner is not None:
+        return owner == country_id
+    return item_id in referenced_ids
 
 
 def _first_scalar(block: str, keys: list[str]) -> Any:

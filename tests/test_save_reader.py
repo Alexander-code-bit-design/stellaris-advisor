@@ -117,6 +117,7 @@ country=
             ship_design={ 200 201 }
             auto_gen_design=no
         }
+        special_projects={ 301 }
         tech_status=
         {
             technology="tech_space_exploration"
@@ -229,6 +230,53 @@ first_contacts=
             stage="default_stage_2"
             status=in_progress
         }
+    }
+}
+anomalies=
+{
+    300=
+    {
+        category="anomaly_life_signs"
+        name={ key="Test Anomaly" literal=yes }
+        owner=0
+        coordinate={ origin=88 }
+        planet=3
+        scientist=11
+        difficulty=4
+        progress=12.5
+        days_left=30
+        status=in_progress
+    }
+    399={ owner=9 category="hidden_anomaly" }
+}
+special_projects=
+{
+    301=
+    {
+        type="PROJECT_TEST_SPECIMEN"
+        name={ key="Test Project" literal=yes }
+        coordinate={ origin=77 }
+        planet=3
+        location=77
+        leader=11
+        progress=20
+        days_left=15
+        status=available
+    }
+}
+astral_actions=
+{
+    302=
+    {
+        type="ASTRAL_TEST_ACTION"
+        name={ key="Test Astral Action" literal=yes }
+        owner=0
+        coordinate={ origin=88 }
+        rift=44
+        assigned_leader=11
+        progress=1.5
+        days_left=6
+        status=can_start
     }
 }
 planets=
@@ -644,6 +692,7 @@ leaders=
     assert "Known map/hyperlanes: known/relevant systems 2, starbase systems 1, first-contact locations 1, frontier link candidates 2" in english_markdown
     assert "Visible hostile targets: targets 1, highest power 456.5, nearest colony 1 jumps" in english_markdown
     assert "Threat/border jump distances: sources 2, nearest colony 1 jumps, nearest starbase 1 jumps, nearest upgraded starbase 1 jumps" in english_markdown
+    assert "Exploration tasks: anomalies 1, special_projects 1, astral_actions 1" in english_markdown
     assert len(empire.megastructures) == 1
     assert empire.megastructures[0].megastructure_type == "grand_archive_0"
     assert empire.megastructures[0].system_id == 77
@@ -659,6 +708,32 @@ leaders=
         "CORVETTE_FISSION_REACTOR",
         "HYPER_DRIVE_1",
     ]
+    assert len(empire.anomalies) == 1
+    assert empire.anomalies[0].anomaly_id == 300
+    assert empire.anomalies[0].category == "anomaly_life_signs"
+    assert empire.anomalies[0].name == "Test Anomaly"
+    assert empire.anomalies[0].system_id == 88
+    assert empire.anomalies[0].planet_id == 3
+    assert empire.anomalies[0].assigned_leader_id == 11
+    assert empire.anomalies[0].difficulty == 4
+    assert empire.anomalies[0].progress == 12.5
+    assert empire.anomalies[0].days_left == 30
+    assert empire.anomalies[0].status == "in_progress"
+    assert len(empire.special_projects) == 1
+    assert empire.special_projects[0].project_id == 301
+    assert empire.special_projects[0].project_type == "PROJECT_TEST_SPECIMEN"
+    assert empire.special_projects[0].owner is None
+    assert empire.special_projects[0].system_id == 77
+    assert empire.special_projects[0].location_id == 77
+    assert empire.special_projects[0].assigned_leader_id == 11
+    assert empire.special_projects[0].status == "available"
+    assert len(empire.astral_actions) == 1
+    assert empire.astral_actions[0].action_id == 302
+    assert empire.astral_actions[0].action_type == "ASTRAL_TEST_ACTION"
+    assert empire.astral_actions[0].owner == 0
+    assert empire.astral_actions[0].system_id == 88
+    assert empire.astral_actions[0].rift_id == 44
+    assert empire.astral_actions[0].status == "can_start"
     assert empire.technologies == {
         "tech_space_exploration": 1,
         "tech_starbase_2": 1,

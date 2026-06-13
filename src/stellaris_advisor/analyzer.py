@@ -66,6 +66,7 @@ def build_report(
         )
         if detail_level is not DetailLevel.SUMMARY:
             summary.insert(25, f"领袖概览: {_format_leaders(empire, detail_level)}")
+        summary.append(f"Exploration tasks: {_format_exploration_tasks(empire)}")
         if empire.monthly_income:
             summary.append(f"月收入概览: {_format_resources(empire.monthly_income)}")
         if detail_level is DetailLevel.FULL:
@@ -188,6 +189,7 @@ def _build_english_report(
         )
         if detail_level is not DetailLevel.SUMMARY:
             summary.insert(25, f"Leader overview: {_format_leaders_en(empire, detail_level)}")
+        summary.append(f"Exploration tasks: {_format_exploration_tasks_en(empire)}")
         if empire.monthly_income:
             summary.append(f"Monthly income: {_format_resources(empire.monthly_income)}")
         if detail_level is DetailLevel.FULL:
@@ -847,8 +849,58 @@ def _format_ship_designs_en(
     return _format_ship_designs(empire, detail_level=detail_level, limit=limit)
 
 
+def _format_exploration_tasks(empire: EmpireSummary) -> str:
+    total = len(empire.anomalies) + len(empire.special_projects) + len(empire.astral_actions)
+    if total == 0:
+        return "none parsed"
+    return (
+        f"anomalies {len(empire.anomalies)}, "
+        f"special_projects {len(empire.special_projects)}, "
+        f"astral_actions {len(empire.astral_actions)}"
+    )
+
+
+def _format_exploration_tasks_en(empire: EmpireSummary) -> str:
+    return _format_exploration_tasks(empire)
+
+
+def _format_exploration_task_details(empire: EmpireSummary, limit: int = 30) -> str:
+    parts: list[str] = []
+    for anomaly in empire.anomalies[:limit]:
+        parts.append(
+            f"anomaly {anomaly.anomaly_id} {compact_name(anomaly.category) if anomaly.category else 'unknown'}: "
+            f"name {_format_name(anomaly.name) or 'unknown'}, owner {_format_number(anomaly.owner)}, "
+            f"system {_format_number(anomaly.system_id)}, planet {_format_number(anomaly.planet_id)}, "
+            f"leader {_format_number(anomaly.assigned_leader_id)}, difficulty {_format_number(anomaly.difficulty)}, "
+            f"progress {_format_number(anomaly.progress)}, days_left {_format_number(anomaly.days_left)}, "
+            f"status {anomaly.status or 'unknown'}"
+        )
+    for project in empire.special_projects[:limit]:
+        parts.append(
+            f"special_project {project.project_id} {compact_name(project.project_type) if project.project_type else 'unknown'}: "
+            f"name {_format_name(project.name) or 'unknown'}, owner {_format_number(project.owner)}, "
+            f"system {_format_number(project.system_id)}, planet {_format_number(project.planet_id)}, "
+            f"location {_format_number(project.location_id)}, leader {_format_number(project.assigned_leader_id)}, "
+            f"progress {_format_number(project.progress)}, days_left {_format_number(project.days_left)}, "
+            f"status {project.status or 'unknown'}"
+        )
+    for action in empire.astral_actions[:limit]:
+        parts.append(
+            f"astral_action {action.action_id} {compact_name(action.action_type) if action.action_type else 'unknown'}: "
+            f"name {_format_name(action.name) or 'unknown'}, owner {_format_number(action.owner)}, "
+            f"system {_format_number(action.system_id)}, rift {_format_number(action.rift_id)}, "
+            f"leader {_format_number(action.assigned_leader_id)}, progress {_format_number(action.progress)}, "
+            f"days_left {_format_number(action.days_left)}, status {action.status or 'unknown'}"
+        )
+    if not parts:
+        return "not parsed or none available"
+    total = len(empire.anomalies) + len(empire.special_projects) + len(empire.astral_actions)
+    suffix = f" (+{total - len(parts)})" if total > len(parts) else ""
+    return " | ".join(parts) + suffix
+
+
 def _format_full_detail_lines(empire: EmpireSummary) -> list[str]:
-    return [
+    lines = [
         f"领袖细节: {_format_leader_details(empire)}",
         f"外交/接触细节: {_format_diplomacy_details(empire)}",
         f"可见星图/航道细节: {_format_known_map_details(empire)}",
@@ -859,10 +911,12 @@ def _format_full_detail_lines(empire: EmpireSummary) -> list[str]:
         f"星球建筑/区划细节: {_format_planet_details(empire)}",
         f"舰船设计细节: {_format_ship_design_details(empire)}",
     ]
+    lines.append(f"Exploration task details: {_format_exploration_task_details(empire)}")
+    return lines
 
 
 def _format_full_detail_lines_en(empire: EmpireSummary) -> list[str]:
-    return [
+    lines = [
         f"Leader details: {_format_leader_details(empire)}",
         f"Diplomacy/contact details: {_format_diplomacy_details(empire)}",
         f"Known map/hyperlane details: {_format_known_map_details(empire)}",
@@ -873,6 +927,8 @@ def _format_full_detail_lines_en(empire: EmpireSummary) -> list[str]:
         f"Planet building/district details: {_format_planet_details(empire)}",
         f"Ship design details: {_format_ship_design_details(empire)}",
     ]
+    lines.append(f"Exploration task details: {_format_exploration_task_details(empire)}")
+    return lines
 
 
 def _format_leader_details(empire: EmpireSummary, limit: int = 20) -> str:

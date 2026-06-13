@@ -169,6 +169,50 @@ class ShipDesignSummary:
 
 
 @dataclass(slots=True)
+class AnomalySummary:
+    anomaly_id: int
+    category: str | None = None
+    name: str | None = None
+    owner: int | None = None
+    system_id: int | None = None
+    planet_id: int | None = None
+    assigned_leader_id: int | None = None
+    difficulty: int | None = None
+    progress: float | None = None
+    days_left: float | None = None
+    status: str | None = None
+
+
+@dataclass(slots=True)
+class SpecialProjectSummary:
+    project_id: int
+    project_type: str | None = None
+    name: str | None = None
+    owner: int | None = None
+    system_id: int | None = None
+    planet_id: int | None = None
+    location_id: int | None = None
+    assigned_leader_id: int | None = None
+    progress: float | None = None
+    days_left: float | None = None
+    status: str | None = None
+
+
+@dataclass(slots=True)
+class AstralActionSummary:
+    action_id: int
+    action_type: str | None = None
+    name: str | None = None
+    owner: int | None = None
+    system_id: int | None = None
+    rift_id: int | None = None
+    assigned_leader_id: int | None = None
+    progress: float | None = None
+    days_left: float | None = None
+    status: str | None = None
+
+
+@dataclass(slots=True)
 class OpinionModifierSummary:
     modifier: str
     value: float | None = None
@@ -296,6 +340,9 @@ class EmpireSummary:
     megastructures: list[MegastructureSummary] = field(default_factory=list)
     ship_design_ids: list[int] = field(default_factory=list)
     ship_designs: list[ShipDesignSummary] = field(default_factory=list)
+    anomalies: list[AnomalySummary] = field(default_factory=list)
+    special_projects: list[SpecialProjectSummary] = field(default_factory=list)
+    astral_actions: list[AstralActionSummary] = field(default_factory=list)
     diplomatic_relations: list[DiplomaticRelationSummary] = field(default_factory=list)
     first_contacts: list[FirstContactSummary] = field(default_factory=list)
     known_systems: list[SystemSummary] = field(default_factory=list)
