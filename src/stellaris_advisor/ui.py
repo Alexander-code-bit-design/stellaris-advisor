@@ -62,6 +62,7 @@ class AdvisorApp:
         self.output_mode_var = StringVar(value="report")
         self.rag_top_k_var = StringVar(value="0")
         self.status_var = StringVar(value="Ready")
+        self.output_mode_var.trace_add("write", self._sync_detail_level_for_output)
 
         self._save_files: list[Path] = []
         self._build_menu()
@@ -161,6 +162,10 @@ class AdvisorApp:
         combo.grid(row=row, column=1, sticky="ew", padx=(10, 0), pady=2)
         parent.columnconfigure(1, weight=1)
 
+    def _sync_detail_level_for_output(self, *_args: object) -> None:
+        if self.output_mode_var.get() == "prompt":
+            self.detail_level_var.set(DetailLevel.FULL.value)
+
     def _build_output_panel(self, parent: Frame) -> None:
         toolbar = Frame(parent)
         toolbar.pack(side=TOP, fill="x")
@@ -252,11 +257,16 @@ class AdvisorApp:
             set_localization_catalog(None)
 
         save = read_save(save_file)
+        detail_level = (
+            DetailLevel.FULL
+            if self.output_mode_var.get() == "prompt"
+            else DetailLevel(self.detail_level_var.get())
+        )
         report = build_report(
             save,
             VisibilityMode(self.visibility_var.get()),
             language,
-            DetailLevel(self.detail_level_var.get()),
+            detail_level,
         )
         if self.output_mode_var.get() == "report":
             return render_markdown(report)
